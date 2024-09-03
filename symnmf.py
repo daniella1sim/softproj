@@ -54,7 +54,7 @@ def main():
     data = np.genfromtxt(filepath, delimiter=',', dtype=float)
     N, D = data.shape
     if (K > N):
-        print("Error: K must be less than the number of rows in the data")
+        print("Error: K must be less than the number of rows in the data ")
         return
 
     A = similarity_matrix(data)
