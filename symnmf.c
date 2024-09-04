@@ -155,7 +155,7 @@ int compareStrings(char *s1, char *s2)
 
 double distance(struct cord *point1, struct cord *point2)
 {
-    double sum, ret;
+    double sum;
     double val1, val2;
 
     sum = 0;
@@ -167,7 +167,6 @@ double distance(struct cord *point1, struct cord *point2)
         point1 = point1->next;
         point2 = point2->next;
     }
-    ret = exp(-sum/2);
     return exp(-sum/2);
 }
 
@@ -210,7 +209,7 @@ void printMatrix(double** matrix, int n)
         {
             printf("%.4f,", matrix[i][j]);
         }
-        printf("%.4f\n", &matrix[i][n - 1]);
+        printf("%.4f\n", matrix[i][n - 1]);
     }
 }
 
