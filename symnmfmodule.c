@@ -93,7 +93,7 @@ static PyObject* symnmf(PyObject *self, PyObject *args)
 
 static PyObject* sym(PyObject *self, PyObject *args)
 {
-    PyObject *X;
+    PyObject *X, retMat;
     struct vector* points;
     int numOfPoints;
 
@@ -103,12 +103,16 @@ static PyObject* sym(PyObject *self, PyObject *args)
     points = PyObjectToLinkedList(X);
     numOfPoints = countVectors(points);
     double** similarityMat = similarityMatrix(points, numOfPoints);
-    return matrixToPyObject(similarityMat, numOfPoints);
+    retMat = matrixToPyObject(similarityMat, numOfPoints);
+
+    freeVector(points);
+    freeMatrix(similarityMat, numOfPoints);    
+    return retMat;
 }
 
 static PyObject* ddg(PyObject *self, PyObject *args)
 {
-    PyObject *X;
+    PyObject *X, *retMat;
     struct vector* points;
     int numOfPoints;
 
@@ -119,12 +123,17 @@ static PyObject* ddg(PyObject *self, PyObject *args)
     numOfPoints = countVectors(points);
     double** similarityMat = similarityMatrix(points, numOfPoints);
     double** diagonalDegreeMat = diagonalDegreeMatrix(similarityMat, numOfPoints);
-    return matrixToPyObject(diagonalDegreeMat, numOfPoints);
+    retMat = matrixToPyObject(diagonalDegreeMat, numOfPoints);
+
+    freeVector(points);
+    freeMatrix(similarityMat, numOfPoints);
+    freeMatrix(diagonalDegreeMat, numOfPoints);
+    return retMat;
 }
 
 static PyObject* norm(PyObject *self, PyObject *args)
 {
-    PyObject *X;
+    PyObject *X, *retMat;
     struct vector* points;
     int numOfPoints;
 
@@ -136,7 +145,13 @@ static PyObject* norm(PyObject *self, PyObject *args)
     double** similarityMat = similarityMatrix(points, numOfPoints);
     double** diagonalDegreeMat = diagonalDegreeMatrix(similarityMat, numOfPoints);
     double** normalizedSimilarityMat = normalizedSimilarityMatrix(similarityMat, diagonalDegreeMat, numOfPoints);
-    return matrixToPyObject(normalizedSimilarityMat, numOfPoints);
+    retMat = matrixToPyObject(normalizedSimilarityMat, numOfPoints);
+
+    freeVector(points);
+    freeMatrix(similarityMat, numOfPoints);
+    freeMatrix(diagonalDegreeMat, numOfPoints);
+    freeMatrix(normalizedSimilarityMat, numOfPoints);
+    return retMat;
 }
 
 static PyMethodDef symnmfMethods[] = {

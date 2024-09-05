@@ -16,7 +16,7 @@ struct vector
 struct cord* createNewCord()
 {
     struct cord *headCord;
-    headCord = (struct cord*)malloc(sizeof(struct cord));
+    headCord = (struct cord*)calloc(1, sizeof(struct cord));
     headCord->next = NULL;
     return headCord;
 }
@@ -24,14 +24,14 @@ struct cord* createNewCord()
 struct vector* createNewVector()
 {
     struct vector *headVector;
-    headVector = (struct vector*)malloc(sizeof(struct vector));
+    headVector = (struct vector*)calloc(1, sizeof(struct vector));
     headVector->next = NULL;
     return headVector;
 }
 
 struct cord* addNewCord(struct cord *currCord)
 {
-    currCord->next = (struct cord*)malloc(sizeof(struct cord));
+    currCord->next = (struct cord*)calloc(1, sizeof(struct cord));
     currCord = currCord->next;
     currCord->next = NULL;
     return currCord;
@@ -39,7 +39,7 @@ struct cord* addNewCord(struct cord *currCord)
 
 struct vector* addVector(struct vector *currVec)
 {
-    currVec->next = (struct vector*)malloc(sizeof(struct vector));
+    currVec->next = (struct vector*)calloc(1, sizeof(struct vector));
     currVec = currVec->next;
     currVec->next = NULL;
     return currVec;
@@ -73,7 +73,7 @@ void freeVector(struct vector *v)
     free(v);
 }
 
-struct vector* loadPoints()
+struct vector* loadPoints(FILE *file)
 {
     char ch ,prevCh;
     double currVal;
@@ -81,15 +81,16 @@ struct vector* loadPoints()
     struct vector *currVec, *headVec;
     struct cord *headCord, *currCord;
 
-    headCord = (struct cord*)malloc(sizeof(struct cord));
+    headCord = (struct cord*)calloc(1, sizeof(struct cord));
     currCord = headCord;
     currCord->next = NULL;
 
-    headVec = (struct vector*)malloc(sizeof(struct vector));
+    headVec = (struct vector*)calloc(1, sizeof(struct vector));
     currVec = headVec;
     currVec->next = NULL;
 
-    while (scanf("%lf%c", &currVal, &ch) == 2)
+    prevCh = '\0';
+    while (fscanf(file, "%lf%c", &currVal, &ch) == 2)
     {
         if(ch == '\n')
         {
@@ -184,10 +185,10 @@ double** matrixMultiply(double** matrix1, double** matrix2, int n)
 {
     double ij;
     double **matrix;
-    matrix = (double**)malloc(n * sizeof(double*));
+    matrix = (double**)calloc(n, sizeof(double*));
     for (int i = 0; i < n; i++)
     {
-        matrix[i] = (double*)malloc(n * sizeof(double));
+        matrix[i] = (double*)calloc(n, sizeof(double));
         for (int j = 0; j < n; j++)
         {
             ij = 0;
@@ -219,10 +220,10 @@ double** similarityMatrix(struct vector *points, int numOfPoints)
     double **matrix;
 
     currPointRow = points;
-    matrix = (double**)malloc(numOfPoints * sizeof(double*));
+    matrix = (double**)calloc(numOfPoints, sizeof(double*));
     for (int row = 0; row < numOfPoints; row++)
     {
-        matrix[row] = (double*)malloc(numOfPoints * sizeof(double));
+        matrix[row] = (double*)calloc(numOfPoints, sizeof(double));
         currPointColumn = points;
         for (int column = 0; column < numOfPoints; column++)
         {
@@ -243,10 +244,10 @@ double** similarityMatrix(struct vector *points, int numOfPoints)
 double** diagonalDegreeMatrix(double **similarityMatrix, int n)
 {
     double **ddg;
-    ddg = (double**)malloc(n * sizeof(double*));
+    ddg = (double**)calloc(n, sizeof(double*));
     for (int i = 0; i < n; i++)
     {
-        ddg[i] = (double*)malloc(n * sizeof(double));
+        ddg[i] = (double*)calloc(n, sizeof(double));
         for (int j = 0; j < n; j++)
         {
             if (i == j)
@@ -263,10 +264,10 @@ double** diagonalDegreeMatrix(double **similarityMatrix, int n)
 double** diagInvSqrtMatrix(double **diagonalDegreeMatrix, int n)
 {
     double **norm;
-    norm = (double**)malloc(n * sizeof(double*));
+    norm = (double**)calloc(n, sizeof(double*));
     for (int i = 0; i < n; i++)
     {
-        norm[i] = (double*)malloc(n * sizeof(double));
+        norm[i] = (double*)calloc(n, sizeof(double));
         for (int j = 0; j < n; j++)
         {
             if (i == j)
@@ -293,7 +294,8 @@ double** normalizedSimilarityMatrix(double **similarityMat, double **diagonalDeg
 
 int main(int argc, char *argv[]) 
 {
-    char* goal = argv[1];
+    char *goal = argv[1];
+    FILE *file;
     char sym[] = "sym";
     char ddg[] = "ddg";
     char norm[] = "norm";
@@ -301,7 +303,9 @@ int main(int argc, char *argv[])
    struct vector *points;
    int numOfPoints;
 
-   points = loadPoints();
+   file = fopen(argv[2], "r");
+   points = loadPoints(file);
+   fclose(file);
    numOfPoints = countVectors(points);
 
     double **similarityMat = similarityMatrix(points, numOfPoints);
@@ -328,4 +332,5 @@ int main(int argc, char *argv[])
         }
     }
     freeVector(points);
+    return 1;
 }
