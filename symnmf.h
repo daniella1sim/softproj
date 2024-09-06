@@ -12,6 +12,11 @@ struct vector
     struct cord *cords;
 };
 
+double ** initializeMatrix(int n, int m);
+double **transpose(double **matrix);
+double SquaredFrobeniusNorm(double **matrixA, double** matrixB);
+double** matrixMultiply(double** matrix1, double** matrix2, int n, int m);
+
 struct cord* createNewCord();
 struct vector* createNewVector();
 struct cord* addNewCord(struct cord *currCord);
