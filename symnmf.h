@@ -13,18 +13,18 @@ struct vector
     struct cord *cords;
 };
 
-typdef struct
+typedef struct
 {
     double **data;
     int rows;
     int cols;
-};
+} Matrix;
 
 
-Matrix initializeMatrix(int n, int m);
-Matrix transpose(Matrix * matrix);
+Matrix *initializeMatrix(int n, int m);
+Matrix *transpose(Matrix * matrix);
 double MatrixDistance(Matrix *matrixA, Matrix *matrixB);
-Matrix matrixMultiply(Matrix *matrix1, Matrix *matrix2);
+Matrix *matrixMultiply(Matrix *matrix1, Matrix *matrix2);
 
 struct cord* createNewCord();
 struct vector* createNewVector();
@@ -36,8 +36,8 @@ int countVectors(struct vector *headVec);
 void freeMatrix(Matrix *matrix);
 void printMatrix(Matrix *matrix);
 
-Matrix similarityMatrix(struct vector *points, int numOfPoints);
-Matrix diagonalDegreeMatrix(Matrix *similarityMatrix);
-Matrix normalizedSimilarityMatrix(Matrix *similarityMat, Matrix *diagonalDegreeMat);
+Matrix *similarityMatrix(struct vector *points, int numOfPoints);
+Matrix *diagonalDegreeMatrix(Matrix *similarityMatrix);
+Matrix *normalizedSimilarityMatrix(Matrix *similarityMat, Matrix *diagonalDegreeMat);
 
 #endif
