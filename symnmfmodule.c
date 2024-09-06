@@ -1,16 +1,22 @@
-# define PY_SSIZE_T_CLEAN
+#define PY_SSIZE_T_CLEAN
 #include <Python.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <math.h>
 #include "symnmf.h"
 
-
 #define EPSILON 0.0001
 #define MAX_ITERATIONS 300
 #define BETA 0.5
 
 
+/**
+ * @brief Print a linked list of coordinates
+ * 
+ * The function prints a linked list of coordinates.
+ * 
+ * @param c - A pointer to the head of the linked list 
+ */
 void printCord(struct cord *c)
 {
     while(c != NULL)
@@ -21,6 +27,13 @@ void printCord(struct cord *c)
 }
 
 
+/**
+ * @brief Print a linked list of vectors
+ * 
+ * The function prints a linked list of vectors.
+ * 
+ * @param v - A pointer to the head of the linked list
+ */
 void printVector(struct vector *v)
 {
     while(v != NULL)
@@ -32,6 +45,15 @@ void printVector(struct vector *v)
 }
 
 
+/**
+ * @brief Convert a Python list of lists to a linked list of vectors
+ * 
+ * The function converts a Python list of lists (where each inner list represents a vector) 
+ * to a linked list of `vector` structures.
+ * 
+ * @param obj - A Python object representing a list of lists.
+ * @return A pointer to the head of the linked list of vectors, or NULL if an error occurs.
+ */
 struct vector* PyObjectToLinkedList(PyObject *obj)
 {
     PyObject *currObj;
@@ -71,113 +93,199 @@ struct vector* PyObjectToLinkedList(PyObject *obj)
 }
 
 
-PyObject* matrixToPyObject(double** matrix, int n, int m)
+/**
+ * @brief Convert a matrix to a Python object
+ * 
+ * The function converts a `Matrix` structure to a Python list of lists.
+ * 
+ * @param matrix - A pointer to the `Matrix` structure to be converted.
+ * @return A Python object representing the matrix, or NULL if an error occurs.
+ */
+PyObject* matrixToPyObject(Matrix *matrix)
 {
-    PyObject *pythonFloat, *pythonMatrix, *pythonList;
-    int i, j;
+    PyObject *pythonFloat;
+    PyObject *pythonMatrix;
+    PyObject *pythonList;
+    int i;
+    int j;
 
-    pythonMatrix = PyList_New(n);
-    for(i = 0; i < n; i++)
+    pythonMatrix = PyList_New(matrix->rows);
+    for(i = 0; i < matrix->rows; i++)
     {
-        pythonList = PyList_New(m);
-        for(j = 0; j < m; j++)
+        pythonList = PyList_New(matrix->cols);
+        for(j = 0; j < matrix->cols; j++)
         {
-            pythonFloat = Py_BuildValue("f", matrix[i][j]);
+            pythonFloat = Py_BuildValue("f", matrix->data[i][j]);
             PyList_SetItem(pythonList, j, pythonFloat);
         }
         PyList_SetItem(pythonMatrix, i, pythonList);
     }
-    freeMatrix(matrix, n);
     return pythonMatrix;
 }
 
 
-double** PyobjectToMatrix(PyObject *obj, int n)
+/**
+ * @brief Convert a Python list of lists to a matrix
+ * 
+ * The function converts a Python list of lists (where each inner list represents a row of the matrix) 
+ * to a `Matrix` structure.
+ * 
+ * @param obj - A Python object representing a list of lists.
+ * @return A pointer to the `Matrix` structure, or NULL if an error occurs.
+ */
+Matrix *PyobjectToMatrix(PyObject *obj)
 {
     PyObject *currObj;
-    double **matrix;
+    Matrix *matrix;
+    int n;
     int m;
-
-    matrix = (double**)calloc(n, sizeof(double*));
-    for (int i = 0; i < n; i++)
+    int i;
+    int j;
+    
+    if (!PyList_Check(obj))
     {
-        matrix[i] = (double*)calloc(n, sizeof(double));
+        PyErr_SetString(PyExc_TypeError, "The input must be a list of lists");
+        return NULL;
+    }
+    n = (int)PyList_Size(obj);
+    if (n == 0)
+    {
+        PyErr_SetString(PyExc_ValueError, "The input list is empty");
+        return NULL;
+    }
+    
+    currObj = PyList_GetItem(obj, 0);
+    if (!PyList_Check(currObj)) {
+        PyErr_SetString(PyExc_TypeError, "The input list must contain lists");
+        return NULL;
+    }
+    m = (int)PyList_Size(currObj);
+    
+    matrix = initializeMatrix(n, m);
+    
+    for (i = 0; i < n; i++)
+    {   
         currObj = PyList_GetItem(obj, i);
         if (!PyList_Check(currObj))
         {
             PyErr_SetString(PyExc_TypeError, "The input must be a list of lists");
+            freeMatrix(matrix);
             return NULL;
         }
-        m = (int)PyList_Size(currObj);
-        for (int j = 0; j < m; j++)
+        for (j = 0; j < m; j++)
         {
-            matrix[i][j] = PyFloat_AsDouble(PyList_GetItem(currObj, j));
+            matrix->data[i][j] = PyFloat_AsDouble(PyList_GetItem(currObj, j));
         }
     }
     return matrix;
 }
 
 
+/**
+ * @brief Perform Symmetric Non-negative Matrix Factorization (SymNMF)
+ * 
+ * The function performs the Symmetric Non-negative Matrix Factorization algorithm on 
+ * the given matrices H and W. It iteratively updates the matrices to minimize the 
+ * reconstruction error.
+ * 
+ * @param self Pointer to the module object (not used).
+ * @param args A tuple containing the two matrices H and W as Python objects.
+ * @return A Python object representing the factorized matrix, or NULL if an error occurs.
+ */
 static PyObject* symnmf(PyObject *self, PyObject *args)
 {
     PyObject *H;
     PyObject *W;
 
-
     if(!PyArg_ParseTuple(args, "OO", &H, &W)) {
         return NULL;
     }
 
-    double **HMatrix = PyobjectToMatrix(H, (int)PyList_Size(H));
-    double **WMatrix = PyobjectToMatrix(W, (int)PyList_Size(W));
+    Matrix *HMatrix = PyobjectToMatrix(H);
+    Matrix *WMatrix = PyobjectToMatrix(W);
     if (HMatrix == NULL || WMatrix == NULL) return NULL;
 
-    int n = (int)PyList_Size(H);
-    int m = (int)PyList_Size(PyList_GetItem(H, 1));
-    double **next = initializeMatrix(n, m);
-    double **HMatrixT = initializeMatrix(m, n);
-    double **WHMatrix = initializeMatrix(n, m);
-    double **HHtMatrix = initializeMatrix(n, n);
-    double **HHtHMatrix = initializeMatrix(n, m);
+    int n = HMatrix->rows;
+    int m = HMatrix->cols;
+    Matrix *next = initializeMatrix(n, m);
+    Matrix *HMatrixT = initializeMatrix(m, n);
+    Matrix *WHMatrix = initializeMatrix(n, m);
+    Matrix *HHtMatrix = initializeMatrix(n, n);
+    Matrix *HHtHMatrix = initializeMatrix(n, m);
 
     int i;
     int j;
     int iter = 0;
     double distance = INFINITY;
     double calc;
-
+    
     while (iter < MAX_ITERATIONS)
     {
-        HMatrixT = transpose(HMatrix);
-        WHMatrix = matrixMultiply(WMatrix, HMatrix, n, m);
-        HHtMatrix = matrixMultiply(HMatrix, HMatrixT, n, n);
-        HHtHMatrix = matrixMultiply(HHtMatrix, HMatrix, n, m);
+        Matrix* tempmatrix = transpose(HMatrix);
+        freeMatrix(HMatrixT);
+        HMatrixT = tempmatrix;
+        
+        tempmatrix = matrixMultiply(WMatrix, HMatrix);
+        freeMatrix(WHMatrix);
+        WHMatrix = tempmatrix;
+
+        tempmatrix = matrixMultiply(HMatrix, HMatrixT);
+        freeMatrix(HHtMatrix);
+        HHtMatrix = tempmatrix;
+
+        tempmatrix = matrixMultiply(HHtMatrix, HMatrix);
+        freeMatrix(HHtHMatrix);
+        HHtHMatrix = tempmatrix;
+
         for (i = 0; i < n; i++)
         {
             for (j = 0; j < m; j++)
             {
-                calc = HMatrix[i][j] * (1 - BETA + BETA * (WHMatrix[i][j] / HHtHMatrix[i][j]));
-                next[i][j] = calc;
+                if (HHtHMatrix->data[i][j] != 0)
+                {
+                    calc = HMatrix->data[i][j] * (1 - BETA + BETA * (WHMatrix->data[i][j] / HHtHMatrix->data[i][j]));
+                } else 
+                {
+                    calc = HMatrix->data[i][j] * (1 - BETA); // Handle division by zero
+                }
+                next->data[i][j] = calc;
             }
         }
-        distance = SquaredFrobeniusNorm(next, HMatrix);
+        distance = MatrixDistance(next, HMatrix);
         if (distance < EPSILON) break;
-        HMatrix = next;
+        Matrix *tmpmatrixNext = next;
+        next = HMatrix;
+        HMatrix = tmpmatrixNext;
+        
+
         iter++;
     }
     
-    freeMatrix(HMatrix, n);
-    freeMatrix(WMatrix, n);
-    freeMatrix(WHMatrix, n);
-    freeMatrix(HHtMatrix, n);
-    freeMatrix(HHtHMatrix, n);
-    return matrixToPyObject(HMatrix, n, m);
+    freeMatrix(HMatrix);
+    freeMatrix(WMatrix);
+    freeMatrix(WHMatrix);
+    freeMatrix(HHtMatrix);
+    freeMatrix(HHtHMatrix);
+    
+    PyObject *retMat = matrixToPyObject(next);
+    freeMatrix(next);
+    
+    return retMat;
 }
 
 
+/**
+ * @brief Calculate the similarity matrix
+ * 
+ * The function calculates the similarity matrix for a set of points.
+ * 
+ * @param self Pointer to the module object (not used).
+ * @param args A tuple containing the points as a Python object.
+ * @return A Python object representing the similarity matrix, or NULL if an error occurs.
+ */
 static PyObject* sym(PyObject *self, PyObject *args)
 {
-    PyObject *X, retMat;
+    PyObject *X, *retMat;
     struct vector* points;
     int numOfPoints;
 
@@ -186,15 +294,24 @@ static PyObject* sym(PyObject *self, PyObject *args)
     }
     points = PyObjectToLinkedList(X);
     numOfPoints = countVectors(points);
-    double** similarityMat = similarityMatrix(points, numOfPoints);
-    retMat = matrixToPyObject(similarityMat, numOfPoints, numOfPoints);
+    Matrix *similarityMat = similarityMatrix(points, numOfPoints);
+    retMat = matrixToPyObject(similarityMat);
 
     freeVector(points);
-    freeMatrix(similarityMat, numOfPoints);    
+    freeMatrix(similarityMat);    
     return retMat;
 }
 
 
+/**
+ * @brief Calculate the Diagonal Degree Matrix
+ * 
+ * The function calculates the Diagonal Degree Matrix from a set of points.
+ * 
+ * @param self Pointer to the module object (not used).
+ * @param args A tuple containing the points as a Python object.
+ * @return A Python object representing the Diagonal Degree Matrix, or NULL if an error occurs.
+ */
 static PyObject* ddg(PyObject *self, PyObject *args)
 {
     PyObject *X, *retMat;
@@ -206,16 +323,25 @@ static PyObject* ddg(PyObject *self, PyObject *args)
     }
     points = PyObjectToLinkedList(X);
     numOfPoints = countVectors(points);
-    double** similarityMat = similarityMatrix(points, numOfPoints);
-    double** diagonalDegreeMat = diagonalDegreeMatrix(similarityMat, numOfPoints);
-    retMat = matrixToPyObject(diagonalDegreeMat, numOfPoints, numOfPoints);
-
+    Matrix *similarityMat = similarityMatrix(points, numOfPoints);
+    Matrix *diagonalDegreeMat = diagonalDegreeMatrix(similarityMat);
+    retMat = matrixToPyObject(diagonalDegreeMat);
     freeVector(points);
-    freeMatrix(similarityMat, numOfPoints);
-    freeMatrix(diagonalDegreeMat, numOfPoints);
+    freeMatrix(similarityMat);
+    freeMatrix(diagonalDegreeMat);
     return retMat;
 }
 
+
+/**
+ * @brief Calculate the normalized similarity matrix
+ * 
+ * The function calculates the normalized similarity matrix from a set of points.
+ * 
+ * @param self Pointer to the module object (not used).
+ * @param args A tuple containing the points as a Python object.
+ * @return A Python object representing the normalized similarity matrix, or NULL if an error occurs.
+ */
 static PyObject* norm(PyObject *self, PyObject *args)
 {
     PyObject *X, *retMat;
@@ -227,18 +353,20 @@ static PyObject* norm(PyObject *self, PyObject *args)
     }
     points = PyObjectToLinkedList(X);
     numOfPoints = countVectors(points);
-    double** similarityMat = similarityMatrix(points, numOfPoints);
-    double** diagonalDegreeMat = diagonalDegreeMatrix(similarityMat, numOfPoints);
-    double** normalizedSimilarityMat = normalizedSimilarityMatrix(similarityMat, diagonalDegreeMat, numOfPoints);
-    retMat = matrixToPyObject(normalizedSimilarityMat, numOfPoints, numOfPoints);
+    Matrix *similarityMat = similarityMatrix(points, numOfPoints);
+    Matrix *diagonalDegreeMat = diagonalDegreeMatrix(similarityMat);
+    Matrix *normalizedSimilarityMat = normalizedSimilarityMatrix(similarityMat, diagonalDegreeMat);
+    retMat = matrixToPyObject(normalizedSimilarityMat);
 
     freeVector(points);
-    freeMatrix(similarityMat, numOfPoints);
-    freeMatrix(diagonalDegreeMat, numOfPoints);
-    freeMatrix(normalizedSimilarityMat, numOfPoints);
+    freeMatrix(similarityMat);
+    freeMatrix(diagonalDegreeMat);
+    freeMatrix(normalizedSimilarityMat);
     return retMat;
 }
 
+
+/* Module method definitions */
 static PyMethodDef symnmfMethods[] = {
     {"symnmf",  
       (PyCFunction) symnmf,  
@@ -260,6 +388,7 @@ static PyMethodDef symnmfMethods[] = {
 };
 
 
+/* Module definition */
 static struct PyModuleDef symnmfmodule = {
     PyModuleDef_HEAD_INIT,
     "symnmf", 
@@ -269,6 +398,13 @@ static struct PyModuleDef symnmfmodule = {
 };
 
 
+/**
+ * @brief Initialize the symnmf module
+ * 
+ * This function is called when the module is imported. It creates the module object.
+ * 
+ * @return A pointer to the module object, or NULL if an error occurs.
+ */
 PyMODINIT_FUNC PyInit_symnmf(void)
 {
     PyObject *m;
