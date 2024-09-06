@@ -26,24 +26,39 @@ struct vector
     struct cord *cords;
 };
 
+
+/**
+ * @brief Struct for a 2D matrix
+ * 
+ * A 2D matrix is a list of lists of double values.
+ */
+typedef struct {
+    double **data;
+    int rows;
+    int cols;
+} Matrix;
+
+
 /**
  * @brief Initialize a 2D matrix
  * 
- * The function allocates memory for a 2D array and returns a pointer to its head.
+ * The function allocates memory for a 2D array and returns a Matrix struct.
  * 
  * @param n - The number of rows in the matrix
  * @param m - The number of columns in the matrix
- * @return double** 
+ * @return Matrix with all values initialized to 0
  */
-double ** initializeMatrix(int n, int m)
+Matrix initializeMatrix(int n, int m)
 {
-    double **matrix;
-    matrix = (double**)calloc(n, sizeof(double*));
+    Matrix mat;
+    mat.rows = n;
+    mat.cols = m;
+    mat.data = (double**)calloc(n, sizeof(double*));
     for (int i = 0; i < n; i++)
     {
-        matrix[i] = (double*)calloc(m, sizeof(double));
+        mat.data[i] = (double*)calloc(m, sizeof(double));
     }
-    return matrix;
+    return mat;
 }
 
 
@@ -52,39 +67,44 @@ double ** initializeMatrix(int n, int m)
  * 
  * The function transposes a given matrix.
  * 
- * @param matrix - A pointer to the head of a 2D array
- * @return double** - A pointer to the head of a 2D array
- *  
+ * @param matrix - A pointer to a Matrix struct
+ * @return Matrix - A transposed Matrix struct
  */
-double **transpose(double **matrix)
+Matrix transpose(Matrix *matrix)
 {
-    int n = sizeof(matrix) / sizeof(matrix[0]);
-    int m = sizeof(matrix[0]) / sizeof(matrix[0][0]);
-    double **transposed = initializeMatrix(m, n);
-    for (int i = 0; i < n; i++)
+    Matrix transposed = initializeMatrix(matrix->cols, matrix->rows);
+    for (int i = 0; i < matrix->cols; i++)
     {
-        for (int j = 0; j < m; j++)
+        for (int j = 0; j < matrix->rows; j++)
         {
-            transposed[j][i] = matrix[i][j];
+            transposed.data[i][j] = matrix->data[j][i];
         }
     }
     return transposed;
 }
 
 
-double SquaredFrobeniusNorm(double **matrixA, double** matrixB)
+/**
+ * @brief Calculate the distance between two matrices
+ * 
+ * Calculate the distance between two matrices.
+ * 
+ * @param matrixA - The first Matrix struct
+ * @param matrixB - The second Matrix struct
+ * @return double - The distance between the two matrices
+ */
+double MatrixDistance(Matrix *matrixA, Matrix *matrixB)
 {
     double sum = 0;
-    int n = sizeof(matrixA) / sizeof(matrixA[0]);
-    if (n != sizeof(matrixB) / sizeof(matrixB[0])) return -1;
-    int m = sizeof(matrixA[0]) / sizeof(matrixA[0][0]);
-    if (m != sizeof(matrixB[0]) / sizeof(matrixB[0][0])) return -1;
-    
-    for (int i = 0; i < n; i++)
+    if (matrixA->rows != matrixB->rows || matrixA->cols != matrixB->cols) {
+        return -1;
+    }
+
+    for (int i = 0; i < matrixA->rows; i++)
     {
-        for (int j = 0; j < m; j++)
+        for (int j = 0; j < matrixA->cols; j++)
         {  
-            sum += (matrixA[i][j] - matrixB[i][j]) * (matrixA[i][j] - matrixB[i][j]);
+            sum += (matrixA->data[i][j] - matrixB->data[i][j]) * (matrixA->data[i][j] - matrixB->data[i][j]);
         }
     }
     return sum;
@@ -200,6 +220,23 @@ void freeVector(struct vector *v)
 
 
 /**
+ * @brief Free dynamically allocated matrix
+ * 
+ * The function frees a dynamically allocated matrix.
+ * 
+ * @param matrix - A pointer to a Matrix struct
+ */
+void freeMatrix(Matrix *matrix)
+{
+    for (int i = 0; i < matrix->rows; i++) {
+        free(matrix->data[i]);
+    }
+    free(matrix->data);
+    free(matrix);
+}
+
+
+/**
  * @brief Load points from file
  * 
  * The function reads the file and loads the points into a linked list of vectors.
@@ -277,24 +314,6 @@ int countVectors(struct vector *headVec)
 
 
 /**
- * @brief Free a 2D array
- * 
- * The function frees the memory allocated for a 2D array.
- * 
- * @param matrix - A pointer to the head of the 2D array
- * @param n - The number of rows in the matrix
- */
-void freeMatrix(double **matrix, int n)
-{
-    for(int i = 0; i < n; i ++)
-    {
-        free(matrix[i]);
-    }
-    free(matrix);
-}
-
-
-/**
  * @brief Compare two strings
  * 
  * The function compares two strings and returns 1 if they are equal and 0 otherwise.
@@ -320,6 +339,7 @@ int compareStrings(char *s1, char *s2)
     return 0;
 }
 
+
 /**
  * @brief Calculate the distance between two points
  * 
@@ -344,7 +364,7 @@ double distance(struct cord *point1, struct cord *point2)
         point1 = point1->next;
         point2 = point2->next;
     }
-    return exp(-sum/2);
+    return exp(-sum / 2);
 }
 
 
@@ -353,17 +373,16 @@ double distance(struct cord *point1, struct cord *point2)
  * 
  * The function calculates the sum of a column in a matrix.
  * 
- * @param matrix - A pointer to the head of a 2D array
+ * @param matrix - A pointer to a Matrix struct
  * @param col - The column to sum
- * @param n - The number of rows and columns in the matrix
  * @return double - The sum of the column
  */
-double columnSum(double** matrix, int col, int n)
+double columnSum(Matrix *matrix, int col)
 {
     double sum = 0;
-    for (int i = 0; i < n; i++)
+    for (int i = 0; i < matrix->rows; i++)
     {
-        sum += matrix[i][col];
+        sum += matrix->data[i][col];
     }
     return sum;
 }
@@ -374,49 +393,50 @@ double columnSum(double** matrix, int col, int n)
  * 
  * The function multiplies two matrices.
  * 
- * @param matrix1 - A pointer to the head of the first 2D array
- * @param matrix2 - A pointer to the head of the second 2D array
- * @param n - The number of rows and columns in the matrices
- * @return double** - A pointer to the head of a 2D array representing the product of the two matrices
+ * @param matrix1 - The first Matrix struct
+ * @param matrix2 - The second Matrix struct
+ * @return Matrix - A Matrix struct representing the product of the two matrices
  */
-double** matrixMultiply(double** matrix1, double** matrix2, int n, int m)
+Matrix matrixMultiply(Matrix *matrix1, Matrix *matrix2)
 {
-    double ij;
-    double **matrix;
-    matrix = (double**)calloc(n, sizeof(double*));
-    for (int i = 0; i < n; i++)
+    if (matrix1->cols != matrix2->rows) {
+        printf("Matrix dimensions do not match for multiplication.\n");
+        return initializeMatrix(0, 0); // Return empty matrix
+    }
+
+    Matrix result = initializeMatrix(matrix1->rows, matrix2->cols);
+
+    for (int i = 0; i < matrix1->rows; i++)
     {
-        matrix[i] = (double*)calloc(n, sizeof(double));
-        for (int j = 0; j < n; j++)
+        for (int j = 0; j < matrix2->cols; j++)
         {
-            ij = 0;
-            for (int k = 0; k < m; k++)
+            result.data[i][j] = 0;
+            for (int k = 0; k < matrix1->cols; k++)
             {
-                ij += matrix1[i][k] * matrix2[k][j];
+                result.data[i][j] += matrix1->data[i][k] * matrix2->data[k][j];
             }
-            matrix[i][j] = ij;
         }
     }
-    return matrix;
+    return result;
 }
+
 
 /**
  * @brief Print a matrix
  * 
- * The function prints a 2D array.
+ * The function prints a matrix.
  * 
- * @param matrix - A pointer to the head of a 2D array
- * @param n - The number of rows and columns in the matrix
+ * @param matrix - A Matrix struct
  */
-void printMatrix(double** matrix, int n)
+void printMatrix(Matrix *matrix)
 {
-    for(int i = 0; i < n; i++)
+    for(int i = 0; i < matrix->rows; i++)
     {
-        for (int j = 0; j < n - 1; j++)
+        for (int j = 0; j < matrix->cols - 1; j++)
         {
-            printf("%.4f,", matrix[i][j]);
+            printf("%.4f,", matrix->data[i][j]);
         }
-        printf("%.4f\n", matrix[i][n - 1]);
+        printf("%.4f\n", matrix->data[i][matrix->cols - 1]);
     }
 }
 
@@ -428,34 +448,31 @@ void printMatrix(double** matrix, int n)
  * 
  * @param points - A pointer to the head of a linked list of vector structures. Each vector represents a point.
  * @param numOfPoints - The number of points
- * @return double** - A pointer to the head of a 2D array representing the similarity matrix
+ * @return Matrix - A Matrix struct representing the similarity matrix
  * 
  */
-double** similarityMatrix(struct vector *points, int numOfPoints)
+Matrix similarityMatrix(struct vector *points, int numOfPoints)
 {
     struct vector *currPointRow;
     struct vector *currPointColumn;
-    double **matrix; // The similarity matrix
+    Matrix matrix = initializeMatrix(numOfPoints, numOfPoints);
 
     currPointRow = points;
-    matrix = (double**)calloc(numOfPoints, sizeof(double*));
     for (int row = 0; row < numOfPoints; row++)
     {
-        matrix[row] = (double*)calloc(numOfPoints, sizeof(double));
         currPointColumn = points;
         for (int column = 0; column < numOfPoints; column++)
         {
             if (row == column)
             {
-                matrix[row][column] = 0;
+                matrix.data[row][column] = 0;
             } else{
-                matrix[row][column] = distance(currPointColumn->cords, currPointRow->cords);
+                matrix.data[row][column] = distance(currPointColumn->cords, currPointRow->cords);
             }
             currPointColumn = currPointColumn->next;
         }       
         currPointRow = currPointRow->next;
     }
-    
     return matrix;
 }
 
@@ -464,22 +481,16 @@ double** similarityMatrix(struct vector *points, int numOfPoints)
  * 
  * The function calculates the diagonal degree matrix for the given similarity matrix.
  * 
- * @param similarityMatrix - A pointer to the head of a 2D array representing the similarity matrix
- * @param n - The number of rows and columns in the matrix
- * @return double** - A pointer to the head of a 2D array representing the diagonal degree matrix
+ * @param similarityMatrix - A pointer to the similarity matrix
+ * @return Matrix - A Matrix struct representing the diagonal degree matrix
  */
-double** diagonalDegreeMatrix(double **similarityMatrix, int n)
+Matrix diagonalDegreeMatrix(Matrix *similarityMatrix)
 {
-    double **ddg;
-    ddg = (double**)calloc(n, sizeof(double*));
-    for (int i = 0; i < n; i++)
+    Matrix ddg = initializeMatrix(similarityMatrix->rows, similarityMatrix->rows);
+    for (int i = 0; i < similarityMatrix->rows; i++)
     {
-        ddg[i] = (double*)calloc(n, sizeof(double));
-        for (int j = 0; j < n; j++)
-        {
-            if (i == j) ddg[i][j] = columnSum(similarityMatrix, j, n);
-            else ddg[i][j] = 0;
-        }
+        
+        ddg.data[i][i] = columnSum(similarityMatrix, i);
     }
     return ddg;
 }
@@ -490,25 +501,18 @@ double** diagonalDegreeMatrix(double **similarityMatrix, int n)
  * 
  * The function calculates the inverse square root of the diagonal degree matrix.
  * 
- * @param diagonalDegreeMatrix - A pointer to the head of a 2D array representing the diagonal degree matrix
- * @param n - The number of rows and columns in the matrix
- * @return double** - A pointer to the head of a 2D array representing the inverse square root of the diagonal degree matrix
+ * @param diagonalDegreeMatrix - A pointer to the diagonal degree matrix
+ * @return Matrix - A Matrix struct representing the inverse square root of the diagonal degree matrix
  */
-double** diagInvSqrtMatrix(double **diagonalDegreeMatrix, int n)
+Matrix diagInvSqrtMatrix(Matrix *diagonalDegreeMatrix)
 {
-    double **norm;
-    norm = (double**)calloc(n, sizeof(double*));
-    for (int i = 0; i < n; i++)
+    Matrix norm = initializeMatrix(diagonalDegreeMatrix->rows, diagonalDegreeMatrix->cols);
+    for (int i = 0; i < diagonalDegreeMatrix->rows; i++)
     {
-        norm[i] = (double*)calloc(n, sizeof(double));
-        for (int j = 0; j < n; j++)
-        {
-            if (i == j)
-            {
-                norm[i][j] = 1 / sqrt(diagonalDegreeMatrix[i][j]);
-            } else {
-                norm[i][j] = 0;
-            }
+        if (diagonalDegreeMatrix->data[i][i] != 0) {
+            norm.data[i][i] = 1 / sqrt(diagonalDegreeMatrix->data[i][i]);
+        } else {
+            norm.data[i][i] = 0;
         }
     }
     return norm;
@@ -520,24 +524,31 @@ double** diagInvSqrtMatrix(double **diagonalDegreeMatrix, int n)
  * 
  * The function calculates the normalized similarity matrix for the given similarity matrix and diagonal degree matrix.
  * 
- * @param similarityMat - A pointer to the head of a 2D array representing the similarity matrix
- * @param diagonalDegreeMat - A pointer to the head of a 2D array representing the diagonal degree matrix
- * @param n - The number of rows and columns in the matrices
- * @return double** - A pointer to the head of a 2D array representing the normalized similarity matrix
+ * @param similarityMat - A pointer to the simmilarity matrix
+ * @param diagonalDegreeMat - A pointer to the diagonal degree matrix
+ * @return Matrix - A Matrix struct representing the normalized similarity matrix
  */
-double** normalizedSimilarityMatrix(double **similarityMat, double **diagonalDegreeMat, int n)
+Matrix normalizedSimilarityMatrix(Matrix *similarityMat, Matrix *diagonalDegreeMat)
 {
-    double **first;
-    double **sec;
-    double **diagInvSqrtMat;
-    diagInvSqrtMat = diagInvSqrtMatrix(diagonalDegreeMat, n);
-    first = matrixMultiply(diagInvSqrtMat, similarityMat, n, n);
-    sec = matrixMultiply(first, diagInvSqrtMat, n, n);
-    freeMatrix(diagInvSqrtMat, n);
-    freeMatrix(first, n);
-    return sec;
+    Matrix diagInvSqrtMat = diagInvSqrtMatrix(diagonalDegreeMat);
+    Matrix first = matrixMultiply(&diagInvSqrtMat, similarityMat);
+    Matrix result = matrixMultiply(&first, &diagInvSqrtMat);    
+    freeMatrix(&diagInvSqrtMat);
+    freeMatrix(&first);
+    return result;
 }
 
+
+/**
+ * @brief Main function
+ * 
+ * The main function reads the goal and the file name from the command line arguments.
+ * It then calculates the similarity matrix, the diagonal degree matrix, or the normalized similarity matrix based on the goal.
+ * After the calculation, the function prints the matrix and frees the memory.
+ * 
+ * @param argc - The number of command line arguments
+ * 
+ */
 int main(int argc, char *argv[]) 
 {
     char *goal = argv[1];
@@ -554,28 +565,28 @@ int main(int argc, char *argv[])
    fclose(file);
    numOfPoints = countVectors(points);
 
-    double **similarityMat = similarityMatrix(points, numOfPoints);
+    Matrix similarityMat = similarityMatrix(points, numOfPoints);
     if (compareStrings(goal, sym) == 1)
     {
-        printMatrix(similarityMat, numOfPoints);
+        printMatrix(&similarityMat);
         
     }  else {
-        double **diagonalDegreeMat = diagonalDegreeMatrix(similarityMat, numOfPoints);
+        Matrix diagonalDegreeMat = diagonalDegreeMatrix(&similarityMat);
         if (compareStrings(goal, ddg) == 1)
         {
-            printMatrix(diagonalDegreeMat, numOfPoints);
-            freeMatrix(diagonalDegreeMat, numOfPoints);
+            printMatrix(&diagonalDegreeMat);
+            freeMatrix(&diagonalDegreeMat);
         } else {
-            double **normalizedSimilarityMat = normalizedSimilarityMatrix(similarityMat, diagonalDegreeMat, numOfPoints);
+            Matrix normalizedSimilarityMat = normalizedSimilarityMatrix(&similarityMat, &diagonalDegreeMat);
             if (compareStrings(goal, norm) == 1)
             {
-                printMatrix(normalizedSimilarityMat, numOfPoints);
-                freeMatrix(diagonalDegreeMat, numOfPoints);
-                freeMatrix(normalizedSimilarityMat, numOfPoints);
+                printMatrix(&normalizedSimilarityMat);
+                freeMatrix(&diagonalDegreeMat);
+                freeMatrix(&normalizedSimilarityMat);
             }
         }
     }
-    freeMatrix(similarityMat, numOfPoints);
+    freeMatrix(&similarityMat);
     freeVector(points);
     return 0;
 }
