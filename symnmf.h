@@ -6,16 +6,25 @@ struct cord
     double value;
     struct cord *next;
 };
+
 struct vector
 {
     struct vector *next;
     struct cord *cords;
 };
 
-double ** initializeMatrix(int n, int m);
-double **transpose(double **matrix);
-double SquaredFrobeniusNorm(double **matrixA, double** matrixB);
-double** matrixMultiply(double** matrix1, double** matrix2, int n, int m);
+typdef struct
+{
+    double **data;
+    int rows;
+    int cols;
+};
+
+
+Matrix initializeMatrix(int n, int m);
+Matrix transpose(Matrix * matrix);
+double MatrixDistance(Matrix *matrixA, Matrix *matrixB);
+Matrix matrixMultiply(Matrix *matrix1, Matrix *matrix2);
 
 struct cord* createNewCord();
 struct vector* createNewVector();
@@ -24,11 +33,11 @@ struct vector* addVector(struct vector *currVec);
 void freeVector(struct vector *v);
 int countVectors(struct vector *headVec);
 
-void freeMatrix(double **matrix, int n);
-void printMatrix(double** matrix, int n);
+void freeMatrix(Matrix *matrix);
+void printMatrix(Matrix *matrix);
 
-double** similarityMatrix(struct vector *points, int numOfPoints);
-double** diagonalDegreeMatrix(double **similarityMatrix, int n);
-double** normalizedSimilarityMatrix(double **similarityMat, double **diagonalDegreeMat, int n);
+Matrix similarityMatrix(struct vector *points, int numOfPoints);
+Matrix diagonalDegreeMatrix(Matrix *similarityMatrix);
+Matrix normalizedSimilarityMatrix(Matrix *similarityMat, Matrix *diagonalDegreeMat);
 
 #endif
