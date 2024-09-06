@@ -69,7 +69,7 @@ def similarity_matrix(data):
                 sim_matrix[i][j] = 0
                 continue
             distance = np.linalg.norm(data[i] - data[j])
-            sim_matrix = np.exp(-(distance**2)/2)
+            sim_matrix[i][j] = np.exp(-(distance**2)/2)
     return sim_matrix
 
 
@@ -96,15 +96,18 @@ def main():
     
     initial_H = np.random.uniform(low=0, high=(2*np.sqrt(np.average(W)/K)), size=(N, K))
 
-    if goal == "symnmf":
-        res = symnmf.symnmf(initial_H, W)
-    elif goal == "sym":
-        res = symnmf.sym(data)
-    elif goal == "ddg":
-        res = symnmf.ddg(data)
-    else:
-        res = symnmf.norm(data)
+    initial_H_list = initial_H.tolist()
+    W_list = W.tolist()
+    data_list = data.tolist()
 
+    if goal == "symnmf":
+        res = symnmf.symnmf(initial_H_list, W_list)
+    elif goal == "sym":
+        res = symnmf.sym(data_list)
+    elif goal == "ddg":
+        res = symnmf.ddg(data_list)
+    else:
+        res = symnmf.norm(data_list)
     for row in res:
         target = ",".join([f"{x:.4f}" for x in row])
         print(target)
