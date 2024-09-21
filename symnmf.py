@@ -74,6 +74,23 @@ def similarity_matrix(data):
 
 
 """
+Runs the symnmf algorithm
+@type K: int
+@param K: The number of clusters
+@type data: numpy array
+@param data: A numpy array of data
+@rtype: numpy array"""
+def symnmf(K, data):
+    N, D = data.shape
+    A = similarity_matrix(data)
+    D = np.diag(np.sum(A, axis=0))
+    D_inv_sqrt = np.diag(1/np.sqrt(np.sum(A, axis=0)))
+    W = D_inv_sqrt @ A @ D_inv_sqrt
+    initial_H = np.random.uniform(low=0, high=(2*np.sqrt(np.average(W)/K)), size=(N, K))
+    return symnmf.symnmf(initial_H.tolist(), W.tolist())
+
+
+"""
 Main function that runs the program
 @rtype: int
 @returns: 0 if program runs successfully else 1
