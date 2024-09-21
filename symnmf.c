@@ -226,6 +226,104 @@ void freeMatrix(Matrix *matrix){
 
 
 /**
+ * @brief Create and initialize a new cord.
+ * 
+ * The function allocates memory for a new cord structure, initializes it, and sets the next pointer to NULL.
+ * 
+ * @return struct cord* Pointer to the newly created cord.
+ */
+struct cord* createNewCord(){
+    struct cord *newCord = (struct cord*)calloc(1, sizeof(struct cord));
+    newCord->next = NULL;
+    return newCord;
+}
+
+
+/**
+ * @brief Create and initialize a new vector.
+ * 
+ * The function allocates memory for a new vector structure, initializes it, and sets the next pointer to NULL.
+ * 
+ * @return struct vector* Pointer to the newly created vector.
+ */
+struct vector* createNewVector(){
+    struct vector *newVector = (struct vector*)calloc(1, sizeof(struct vector));
+    newVector->next = NULL;
+    return newVector;
+}
+
+
+/**
+ * @brief Add a new cord to the current linked list of cords.
+ * 
+ * The function creates a new cord, links it to the current cord's next pointer, and returns the new cord.
+ * 
+ * @param currCord Pointer to the current cord.
+ * @return struct cord* Pointer to the newly created cord.
+ */
+struct cord* addNewCord(struct cord *currCord){
+    currCord->next = createNewCord();  
+    return currCord->next;             
+}
+
+
+/**
+ * @brief Add a new vector to the current linked list of vectors.
+ * 
+ * The function creates a new vector, links it to the current vector's next pointer, and returns the new vector.
+ * 
+ * @param currVec Pointer to the current vector.
+ * @return struct vector* Pointer to the newly created vector.
+ */
+struct vector* addVector(struct vector *currVec){
+    currVec->next = createNewVector();  
+    return currVec->next;              
+}
+
+
+/**
+ * @brief Handle logic when a newline character is encountered in the file.
+ * 
+ * When a newline is encountered, the function stores the current value in the last cord and 
+ * assigns the linked list of cords to the current vector.
+ * 
+ * @param currVal Pointer to the current value to be stored in the cord.
+ * @param currCord Pointer to the current cord.
+ * @param headCord Pointer to the head cord of the current vector.
+ * @param currVec Pointer to the current vector.
+ */
+void handleNewLine(double *currVal, struct cord **currCord, struct cord **headCord, struct vector **currVec){
+    (*currCord)->value = *currVal;     
+    (*currVec)->cords = *headCord;      
+}
+
+
+
+/**
+ * @brief Handle logic when a regular character (not a newline) is encountered in the file.
+ * 
+ * When a regular character is encountered, the function creates new cords and vectors as necessary.
+ * It also updates the previous and current character status.
+ * 
+ * @param currVal Pointer to the current value to be stored in the cord.
+ * @param ch Pointer to the current character read from the file.
+ * @param prevCh Pointer to the previous character read from the file.
+ * @param currCord Pointer to the current cord.
+ * @param headCord Pointer to the head cord of the current vector.
+ * @param currVec Pointer to the current vector.
+ */
+void handleRegularChar(double *currVal, char *ch, char *prevCh, struct cord **currCord, struct cord **headCord, struct vector **currVec){
+    if (*prevCh == '\n') {
+        *currVec = addVector(*currVec);    
+        *headCord = createNewCord();      
+        *currCord = *headCord;             
+    }
+    (*currCord)->value = *currVal;         
+    *currCord = addNewCord(*currCord);     
+}
+
+
+/**
  * @brief Load points from file
  * 
  * The function reads the file and loads the points into a linked list of vectors.
@@ -234,41 +332,20 @@ void freeMatrix(Matrix *matrix){
  * @param file
  * @return struct vector* 
  */
-struct vector* loadPoints(FILE *file)
-{
+struct vector* loadPoints(FILE *file){
     char ch; /* ch is used to check if the current character is a newline */
-    char prevCh; /* prevCh is used to check if the previous character was a newline */
+    char prevCh = '\0'; /* prevCh is used to check if the previous character was a newline */
     double currVal;
 
-    struct vector *currVec; 
-    struct vector *headVec;
-    struct cord *headCord; 
-    struct cord *currCord;
+    struct vector *currVec = createNewVector();  // Create the first vector
+    struct vector *headVec = currVec; 
 
-    headCord = (struct cord*)calloc(1, sizeof(struct cord));
-    currCord = headCord;
-    currCord->next = NULL;
+    struct cord *currCord = createNewCord();     // Create the first cord
+    struct cord *headCord = currCord; 
 
-    headVec = (struct vector*)calloc(1, sizeof(struct vector));
-    currVec = headVec;
-    currVec->next = NULL;
-
-    prevCh = '\0';
-    while (fscanf(file, "%lf%c", &currVal, &ch) == 2) /* Read the value and the character */
-    {
-        if(ch == '\n'){
-            currCord->value = currVal;
-            currVec->cords = headCord;
-        }
-        else{
-            if (prevCh == '\n'){
-                currVec = addVector(currVec);
-                headCord = createNewCord();
-                currCord = headCord;
-            }
-            currCord->value = currVal;
-            currCord = addNewCord(currCord);
-        }
+    while (fscanf(file, "%lf%c", &currVal, &ch) == 2) {
+        if (ch == '\n') handleNewLine(&currVal, &currCord, &headCord, &currVec);
+        else handleRegularChar(&currVal, &ch, &prevCh, &currCord, &headCord, &currVec);
         prevCh = ch;
     }
     return headVec;
@@ -494,6 +571,66 @@ Matrix *normalizedSimilarityMatrix(Matrix *similarityMat, Matrix *diagonalDegree
 
 
 /**
+ * @brief Load points from a file and return a linked list of vectors.
+ * 
+ * This function opens a file, reads the points using the loadPoints function, and then 
+ * closes the file. It returns the head of the linked list of points (vectors).
+ * 
+ * @param fileName Name of the file to read the points from.
+ * @return struct vector* Pointer to the head of the linked list of vectors, or NULL on failure.
+ */
+struct vector* loadPointsFromFile(const char *fileName) {
+    FILE *file = fopen(fileName, "r");
+    if (!file) {
+        printf("Error: Cannot open file %s\n", fileName);
+        return NULL;
+    }
+
+    struct vector *points = loadPoints(file);  // Load points from the file
+    fclose(file);  // Close the file
+    return points;
+}
+
+
+/**
+ * @brief Process the goal provided by the user and compute the corresponding matrix.
+ * 
+ * This function checks the user's goal (sym, ddg, norm) and computes the corresponding matrix
+ * (similarity matrix, diagonal degree matrix, or normalized similarity matrix). It also prints
+ * the matrix based on the goal and frees any intermediate matrices.
+ * 
+ * @param goal The goal provided by the user (sym, ddg, norm).
+ * @param similarityMat The similarity matrix computed from the points.
+ */
+void processGoal(const char *goal, Matrix *similarityMat) {
+    char sym[] = "sym";
+    char ddg[] = "ddg";
+    char norm[] = "norm";
+
+    // If goal is "sym", print the similarity matrix
+    if (compareStrings(goal, sym) == 1) {
+        printMatrix(similarityMat);
+    }
+    else {
+        Matrix *diagonalDegreeMat = diagonalDegreeMatrix(similarityMat);
+
+        if (compareStrings(goal, ddg) == 1) {
+            printMatrix(diagonalDegreeMat);
+            freeMatrix(diagonalDegreeMat);
+        } 
+        else if (compareStrings(goal, norm) == 1) {
+            Matrix *normalizedSimilarityMat = normalizedSimilarityMatrix(similarityMat, diagonalDegreeMat);
+            printMatrix(normalizedSimilarityMat);
+            freeMatrix(diagonalDegreeMat);
+            freeMatrix(normalizedSimilarityMat);
+        } else {
+            printf("Invalid goal: %s\n", goal);
+        }
+    }
+}
+
+
+/**
  * @brief Main function
  * 
  * The main function reads the goal and the file name from the command line arguments.
@@ -504,50 +641,30 @@ Matrix *normalizedSimilarityMatrix(Matrix *similarityMat, Matrix *diagonalDegree
  * 
  */
 int main(int argc, char *argv[]) {
-    FILE *file;
     char *goal;
-    char sym[] = "sym";
-    char ddg[] = "ddg";
-    char norm[] = "norm";
-
+    char *fileName;
     struct vector *points;
     int numOfPoints;
-
     Matrix *similarityMat;
-    Matrix *diagonalDegreeMat;
-    Matrix *normalizedSimilarityMat;
-    
+
     if (argc != 3){
-        printf("An Error Has Occured\n");
+        printf("An Error Has Occured!\n");
         return 1;
     }
     
     goal = argv[1];
-    file = fopen(argv[2], "r");
-    points = loadPoints(file);
-    fclose(file);
+    fileName = argv[2];
+
+    points = loadPointsFromFile(fileName);
+    if (!points) {
+        printf("An Error has Occured!\n");
+        return 1;
+    }
+
     numOfPoints = countVectors(points);
-
     similarityMat = similarityMatrix(points, numOfPoints);
-
-    if (compareStrings(goal, sym) == 1){
-        printMatrix(similarityMat);   
-    }
-    else {
-        diagonalDegreeMat = diagonalDegreeMatrix(similarityMat);
-        if (compareStrings(goal, ddg) == 1){
-            printMatrix(diagonalDegreeMat);
-            freeMatrix(diagonalDegreeMat);
-        } 
-        else {
-            normalizedSimilarityMat = normalizedSimilarityMatrix(similarityMat, diagonalDegreeMat);
-            if (compareStrings(goal, norm) == 1){
-                printMatrix(normalizedSimilarityMat);
-                freeMatrix(diagonalDegreeMat);
-                freeMatrix(normalizedSimilarityMat);
-            }
-        }
-    }
+    
+    processGoal(goal, similarityMat);
     freeMatrix(similarityMat);
     freeVector(points);
     return 0;
