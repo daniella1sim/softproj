@@ -46,51 +46,89 @@ void printVector(struct vector *v)
 
 
 /**
- * @brief Convert a Python list of lists to a linked list of vectors
+ * @brief Get the size of the specified row in the list of lists.
  * 
- * The function converts a Python list of lists (where each inner list represents a vector) 
- * to a linked list of `vector` structures.
+ * This function retrieves the number of elements in a specified inner list
+ * to determine the number of columns for the vectors.
  * 
- * @param obj - A Python object representing a list of lists.
- * @return A pointer to the head of the linked list of vectors, or NULL if an error occurs.
+ * @param obj A Python object representing a list of lists.
+ * @param rowIndex The index of the row to check.
+ * @return The size of the row, or -1 if an error occurs.
  */
-struct vector* PyObjectToLinkedList(PyObject *obj)
-{
-    PyObject *currObj;
-    int rows, columns;
+int getColumnSize(PyObject *obj, int rowIndex) {
+    PyObject *rowObj = PyList_GetItem(obj, rowIndex);
+    if (!PyList_Check(rowObj)) {
+        PyErr_SetString(PyExc_TypeError, "The input list must contain lists");
+        return -1; 
+    }
+    return (int)PyList_Size(rowObj);
+}
 
-    struct vector *headVec, *currVec;
-    struct cord *headCord, *currCord;
 
-    headCord = (struct cord*)malloc(sizeof(struct cord));
-    currCord = headCord;
-    currCord->next = NULL;
+/**
+ * @brief Populate a vector structure from a Python list.
+ * 
+ * This function populates the given vector using values from the corresponding 
+ * inner list from the Python object.
+ * 
+ * @param vec Pointer to the vector structure being populated.
+ * @param obj A Python object representing the inner list.
+ * @param columns The number of elements in the vector.
+ * @return int 1 if successful, 0 if an error occurs.
+ */
+int populateVector(struct vector *vec, PyObject *obj, int columns) {
+    struct cord *headCord = createNewCord();
+    struct cord *currCord = headCord;
 
-    headVec = (struct vector*)malloc(sizeof(struct vector));
-    currVec = headVec;
-    currVec->next = NULL;
-
-    rows = (int)PyList_Size(obj);
-    if (rows == 0) columns = 0;
-    else columns = (int) PyList_Size(PyList_GetItem(obj, 0));
-
-    for (int i = 0; i < rows; i++)
-    {
-        currVec->cords = currCord;
-        currObj = PyList_GetItem(obj, i);
-        for(int j = 0; j < columns; j++)
-        {
-            currCord->value = PyFloat_AsDouble(PyList_GetItem(currObj, j));
-            if (j == columns - 1) break;
+    for (int j = 0; j < columns; j++) {
+        currCord->value = PyFloat_AsDouble(PyList_GetItem(obj, j));
+        if (j < columns - 1) {
             currCord = addNewCord(currCord);
         }
-        if (i == rows - 1) break;
-        currVec = addVector(currVec);
-        headCord = createNewCord();
-        currCord = headCord;
+    }
+
+    vec->cords = headCord; 
+    return 1; 
+}
+
+
+/**
+ * @brief Convert a Python list of lists to a linked list of vectors.
+ * 
+ * This function converts a Python list of lists (where each inner list represents a vector) 
+ * to a linked list of `vector` structures.
+ * 
+ * @param obj A Python object representing a list of lists.
+ * @return A pointer to the head of the linked list of vectors, or NULL if an error occurs.
+ */
+struct vector* PyObjectToLinkedList(PyObject *obj) {
+    if (!PyList_Check(obj)) {
+        PyErr_SetString(PyExc_TypeError, "Input must be a list of lists");
+        return NULL;
+    }
+
+    int rows = (int)PyList_Size(obj);
+    if (rows == 0) {
+        return NULL;
+    }
+
+    int columns = getColumnSize(obj, 0);
+    struct vector *headVec = createNewVector();
+    struct vector *currVec = headVec;
+
+    for (int i = 0; i < rows; i++) {
+        PyObject *currObj = PyList_GetItem(obj, i);
+        if (!populateVector(currVec, currObj, columns)) {
+            freeLinkedList(headVec);
+            return NULL;
+        }
+        if (i < rows - 1) {
+            currVec = addVector(currVec);
+        }
     }
     return headVec;
 }
+
 
 
 /**
@@ -125,59 +163,155 @@ PyObject* matrixToPyObject(Matrix *matrix)
 
 
 /**
- * @brief Convert a Python list of lists to a matrix
+ * @brief Convert a Python list of lists to a matrix.
  * 
- * The function converts a Python list of lists (where each inner list represents a row of the matrix) 
+ * This function converts a Python list of lists (where each inner list represents a row of the matrix) 
  * to a `Matrix` structure.
  * 
- * @param obj - A Python object representing a list of lists.
+ * @param obj A Python object representing a list of lists.
  * @return A pointer to the `Matrix` structure, or NULL if an error occurs.
  */
-Matrix *PyobjectToMatrix(PyObject *obj)
-{
-    PyObject *currObj;
-    Matrix *matrix;
-    int n;
-    int m;
-    int i;
-    int j;
-    
-    if (!PyList_Check(obj))
-    {
+Matrix *PyobjectToMatrix(PyObject *obj) {
+    if (!PyList_Check(obj)) {
         PyErr_SetString(PyExc_TypeError, "The input must be a list of lists");
         return NULL;
     }
-    n = (int)PyList_Size(obj);
-    if (n == 0)
-    {
+
+    int n = (int)PyList_Size(obj);
+    if (n == 0) {
         PyErr_SetString(PyExc_ValueError, "The input list is empty");
         return NULL;
     }
-    
-    currObj = PyList_GetItem(obj, 0);
-    if (!PyList_Check(currObj)) {
-        PyErr_SetString(PyExc_TypeError, "The input list must contain lists");
-        return NULL;
+
+    int m;
+    Matrix *matrix = initializeMatrix(n, getRowSize(obj, 0));
+    if (matrix == NULL) {
+        return NULL; // Memory allocation failed
     }
-    m = (int)PyList_Size(currObj);
-    
-    matrix = initializeMatrix(n, m);
-    
-    for (i = 0; i < n; i++)
-    {   
-        currObj = PyList_GetItem(obj, i);
-        if (!PyList_Check(currObj))
-        {
-            PyErr_SetString(PyExc_TypeError, "The input must be a list of lists");
+
+    for (int i = 0; i < n; i++) {
+        if (!populateRow(matrix, obj, i, m)) {
             freeMatrix(matrix);
-            return NULL;
-        }
-        for (j = 0; j < m; j++)
-        {
-            matrix->data[i][j] = PyFloat_AsDouble(PyList_GetItem(currObj, j));
+            return NULL; // Error occurred in populating row
         }
     }
+
     return matrix;
+}
+
+
+
+/**
+ * @brief Update the intermediate matrices during SymNMF.
+ * 
+ * This function performs the necessary matrix transpositions and multiplications required
+ * for updating the factor matrices during the SymNMF algorithm.
+ * 
+ * @param HMatrix Pointer to the H matrix.
+ * @param WMatrix Pointer to the W matrix.
+ * @param HMatrixT Pointer to the transposed H matrix.
+ * @param WHMatrix Pointer to the matrix resulting from W * H.
+ * @param HHtMatrix Pointer to the matrix resulting from H * H^T.
+ * @param HHtHMatrix Pointer to the matrix resulting from H * H^T * H.
+ */
+void updateMatrices(Matrix *HMatrix, Matrix *WMatrix, Matrix **HMatrixT, Matrix **WHMatrix, 
+                    Matrix **HHtMatrix, Matrix **HHtHMatrix) {
+    Matrix* tempmatrix;
+
+    /* Transpose HMatrix */
+    tempmatrix = transpose(HMatrix);
+    freeMatrix(*HMatrixT);
+    *HMatrixT = tempmatrix;
+
+    /* Multiply WMatrix and HMatrix */
+    tempmatrix = matrixMultiply(WMatrix, HMatrix);
+    *WHMatrix = tempmatrix;
+
+    /* Multiply HMatrix and HMatrixT */
+    tempmatrix = matrixMultiply(HMatrix, *HMatrixT);
+    freeMatrix(*HHtMatrix);
+    *HHtMatrix = tempmatrix;
+
+    /* Multiply HHtMatrix and HMatrix */
+    tempmatrix = matrixMultiply(*HHtMatrix, HMatrix);
+    freeMatrix(*HHtHMatrix);
+    *HHtHMatrix = tempmatrix;
+}
+
+
+/**
+ * @brief Update the H matrix using WHMatrix and HHtHMatrix.
+ * 
+ * This function updates the elements of the H matrix using the calculated matrices
+ * WHMatrix (W * H) and HHtHMatrix (H * H^T * H). It handles cases where division by zero
+ * might occur.
+ * 
+ * @param HMatrix Pointer to the H matrix.
+ * @param WHMatrix Pointer to the matrix W * H.
+ * @param HHtHMatrix Pointer to the matrix H * H^T * H.
+ * @param next Pointer to the matrix where the updated H values are stored.
+ * @param n Number of rows in the matrices.
+ * @param m Number of columns in the matrices.
+ */
+void updateHMatrix(Matrix *HMatrix, Matrix *WHMatrix, Matrix *HHtHMatrix, Matrix *next, int n, int m) {
+    double calc;
+    int i;
+    int j;
+
+    for (i = 0; i < n; i++) {
+        for (j = 0; j < m; j++) {
+            if (HHtHMatrix->data[i][j] != 0) {
+                calc = HMatrix->data[i][j] * (1 - BETA + BETA * (WHMatrix->data[i][j] / HHtHMatrix->data[i][j]));
+            } else {
+                calc = HMatrix->data[i][j] * (1 - BETA);  // Handle division by zero
+            }
+            next->data[i][j] = calc;
+        }
+    }
+}
+
+
+
+/**
+ * @brief Perform SymNMF algorithm on matrices H and W.
+ * 
+ * This function iteratively updates the matrices H and W to minimize the reconstruction error.
+ * It performs matrix transpositions and multiplications, updates the factor matrices, and checks 
+ * for convergence using the Frobenius norm distance.
+ * 
+ * @param HMatrix Pointer to the H matrix.
+ * @param WMatrix Pointer to the W matrix.
+ * @return Matrix* Pointer to the resulting factorized matrix after convergence.
+ */
+Matrix* performSymNMF(Matrix *HMatrix, Matrix *WMatrix) {
+    int n = HMatrix->rows;
+    int m = HMatrix->cols;
+    Matrix *next = initializeMatrix(n, m);
+    Matrix *HMatrixT = initializeMatrix(m, n);
+    Matrix *WHMatrix = initializeMatrix(n, m);
+    Matrix *HHtMatrix = initializeMatrix(n, n);
+    Matrix *HHtHMatrix = initializeMatrix(n, m);
+    Matrix *tmpmatrixNext = next;
+    int iter = 0;
+    double distance = INFINITY;
+
+    while (iter < MAX_ITERATIONS) {
+        updateMatrices(HMatrix, WMatrix, &HMatrixT, &WHMatrix, &HHtMatrix, &HHtHMatrix);
+        updateHMatrix(HMatrix, WHMatrix, HHtHMatrix, next, n, m);
+        distance = MatrixDistance(next, HMatrix);
+        if (distance < EPSILON) break;
+        tmpmatrixNext = next;
+        next = HMatrix;
+        HMatrix = tmpmatrixNext;
+        iter++;
+    }
+
+    freeMatrix(HMatrixT);
+    freeMatrix(WHMatrix);
+    freeMatrix(HHtMatrix);
+    freeMatrix(HHtHMatrix);
+    freeMatrix(tmpmatrixNext);
+    return next;
 }
 
 
@@ -196,79 +330,23 @@ static PyObject* symnmf(PyObject *self, PyObject *args)
 {
     PyObject *H;
     PyObject *W;
+    Matrix *HMatrix;
+    Matrix *WMatrix;
+    Matrix *result;
+    PyObject *retMat;
 
     if(!PyArg_ParseTuple(args, "OO", &H, &W)) {
         return NULL;
     }
 
-    Matrix *HMatrix = PyobjectToMatrix(H);
-    Matrix *WMatrix = PyobjectToMatrix(W);
+    HMatrix = PyobjectToMatrix(H);
+    WMatrix = PyobjectToMatrix(W);
     if (HMatrix == NULL || WMatrix == NULL) return NULL;
 
-    int n = HMatrix->rows;
-    int m = HMatrix->cols;
-    Matrix *next = initializeMatrix(n, m);
-    Matrix *HMatrixT = initializeMatrix(m, n);
-    Matrix *WHMatrix = initializeMatrix(n, m);
-    Matrix *HHtMatrix = initializeMatrix(n, n);
-    Matrix *HHtHMatrix = initializeMatrix(n, m);
+    result = performSymNMF(HMatrix, WMatrix);
+    retMat = matrixToPyObject(result);
 
-    int i;
-    int j;
-    int iter = 0;
-    double distance = INFINITY;
-    double calc;
-    
-    while (iter < MAX_ITERATIONS)
-    {
-        Matrix* tempmatrix = transpose(HMatrix);
-        freeMatrix(HMatrixT);
-        HMatrixT = tempmatrix;
-        
-        tempmatrix = matrixMultiply(WMatrix, HMatrix);
-        freeMatrix(WHMatrix);
-        WHMatrix = tempmatrix;
-
-        tempmatrix = matrixMultiply(HMatrix, HMatrixT);
-        freeMatrix(HHtMatrix);
-        HHtMatrix = tempmatrix;
-
-        tempmatrix = matrixMultiply(HHtMatrix, HMatrix);
-        freeMatrix(HHtHMatrix);
-        HHtHMatrix = tempmatrix;
-
-        for (i = 0; i < n; i++)
-        {
-            for (j = 0; j < m; j++)
-            {
-                if (HHtHMatrix->data[i][j] != 0)
-                {
-                    calc = HMatrix->data[i][j] * (1 - BETA + BETA * (WHMatrix->data[i][j] / HHtHMatrix->data[i][j]));
-                } else 
-                {
-                    calc = HMatrix->data[i][j] * (1 - BETA); // Handle division by zero
-                }
-                next->data[i][j] = calc;
-            }
-        }
-        distance = MatrixDistance(next, HMatrix);
-        if (distance < EPSILON) break;
-        Matrix *tmpmatrixNext = next;
-        next = HMatrix;
-        HMatrix = tmpmatrixNext;
-        
-
-        iter++;
-    }
-    
-    freeMatrix(HMatrix);
-    freeMatrix(WMatrix);
-    freeMatrix(WHMatrix);
-    freeMatrix(HHtMatrix);
-    freeMatrix(HHtHMatrix);
-    
-    PyObject *retMat = matrixToPyObject(next);
-    freeMatrix(next);
+    freeMatrix(result);
     
     return retMat;
 }
