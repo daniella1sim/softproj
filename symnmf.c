@@ -43,6 +43,24 @@ typedef struct{
 
 
 /**
+ * @brief Free dynamically allocated matrix
+ * 
+ * The function frees a dynamically allocated matrix.
+ * 
+ * @param matrix - A pointer to a Matrix struct
+ */
+void freeMatrix(Matrix *matrix){
+    if (matrix == NULL) return;
+    for (i = 0; i < matrix->rows; i++) {
+        free(matrix->data[i]);
+    }
+    free(matrix->data);
+    free(matrix);
+}
+
+
+
+/**
  * @brief Initialize a 2D matrix
  * 
  * The function allocates memory for a 2D array and returns a Matrix struct.
@@ -54,11 +72,20 @@ typedef struct{
 Matrix *initializeMatrix(int n, int m)
 {
     Matrix *mat = (Matrix*)calloc(1, sizeof(Matrix));
+    if (mat == NULL) return NULL;
     mat->rows = n;
     mat->cols = m;
     mat->data = (double**)calloc(n, sizeof(double*));
+    if (mat->data == NULL){
+        freeMatrix(mat);
+        return NULL;
+    }
     for (i = 0; i < n; i++){
         mat->data[i] = (double*)calloc(m, sizeof(double));
+        if (mat->data[i] == NULL){
+            freeMatrix(mat);
+            return NULL;
+        };
     }
     return mat;
 }
@@ -74,6 +101,7 @@ Matrix *initializeMatrix(int n, int m)
  */
 Matrix *transpose(Matrix *matrix){
     Matrix *transposed = initializeMatrix(matrix->cols, matrix->rows);
+    if (transposed == NULL) return NULL;
     for (i = 0; i < matrix->cols; i++){
         for (j = 0; j < matrix->rows; j++){
             transposed->data[i][j] = matrix->data[j][i];
@@ -94,7 +122,6 @@ Matrix *transpose(Matrix *matrix){
  */
 double MatrixDistance(Matrix *matrixA, Matrix *matrixB){
     double sum = 0;
-
     if (matrixA->rows != matrixB->rows || matrixA->cols != matrixB->cols) {
         return -1;
     }
@@ -118,6 +145,7 @@ double MatrixDistance(Matrix *matrixA, Matrix *matrixB){
 struct cord* createNewCord(){
     struct cord *headCord;
     headCord = (struct cord*)calloc(1, sizeof(struct cord));
+    if (headCord == NULL) return NULL;
     headCord->next = NULL;
     return headCord;
 }
@@ -133,9 +161,11 @@ struct cord* createNewCord(){
 struct vector* createNewVector(){
     struct vector *headVector;
     headVector = (struct vector*)calloc(1, sizeof(struct vector));
+    if (headVector == NULL) return NULL;
     headVector->next = NULL;
     return headVector;
 }
+
 
 /**
  * @brief Add a new coordinate
@@ -147,6 +177,7 @@ struct vector* createNewVector(){
  */
 struct cord* addNewCord(struct cord *currCord){
     currCord->next = (struct cord*)calloc(1, sizeof(struct cord));
+    if (currCord->next == NULL) return NULL;
     currCord = currCord->next;
     currCord->next = NULL;
     return currCord;
@@ -163,6 +194,7 @@ struct cord* addNewCord(struct cord *currCord){
  */
 struct vector* addVector(struct vector *currVec){
     currVec->next = (struct vector*)calloc(1, sizeof(struct vector));
+    if (currVec->next == NULL) return NULL;
     currVec = currVec->next;
     currVec->next = NULL;
     return currVec;
@@ -210,78 +242,6 @@ void freeVector(struct vector *v){
 
 
 /**
- * @brief Free dynamically allocated matrix
- * 
- * The function frees a dynamically allocated matrix.
- * 
- * @param matrix - A pointer to a Matrix struct
- */
-void freeMatrix(Matrix *matrix){
-    for (i = 0; i < matrix->rows; i++) {
-        free(matrix->data[i]);
-    }
-    free(matrix->data);
-    free(matrix);
-}
-
-
-/**
- * @brief Create and initialize a new cord.
- * 
- * The function allocates memory for a new cord structure, initializes it, and sets the next pointer to NULL.
- * 
- * @return struct cord* Pointer to the newly created cord.
- */
-struct cord* createNewCord(){
-    struct cord *newCord = (struct cord*)calloc(1, sizeof(struct cord));
-    newCord->next = NULL;
-    return newCord;
-}
-
-
-/**
- * @brief Create and initialize a new vector.
- * 
- * The function allocates memory for a new vector structure, initializes it, and sets the next pointer to NULL.
- * 
- * @return struct vector* Pointer to the newly created vector.
- */
-struct vector* createNewVector(){
-    struct vector *newVector = (struct vector*)calloc(1, sizeof(struct vector));
-    newVector->next = NULL;
-    return newVector;
-}
-
-
-/**
- * @brief Add a new cord to the current linked list of cords.
- * 
- * The function creates a new cord, links it to the current cord's next pointer, and returns the new cord.
- * 
- * @param currCord Pointer to the current cord.
- * @return struct cord* Pointer to the newly created cord.
- */
-struct cord* addNewCord(struct cord *currCord){
-    currCord->next = createNewCord();  
-    return currCord->next;             
-}
-
-
-/**
- * @brief Add a new vector to the current linked list of vectors.
- * 
- * The function creates a new vector, links it to the current vector's next pointer, and returns the new vector.
- * 
- * @param currVec Pointer to the current vector.
- * @return struct vector* Pointer to the newly created vector.
- */
-struct vector* addVector(struct vector *currVec){
-    currVec->next = createNewVector();  
-    return currVec->next;              
-}
-
-
-/**
  * @brief Handle logic when a newline character is encountered in the file.
  * 
  * When a newline is encountered, the function stores the current value in the last cord and 
@@ -292,9 +252,9 @@ struct vector* addVector(struct vector *currVec){
  * @param headCord Pointer to the head cord of the current vector.
  * @param currVec Pointer to the current vector.
  */
-void handleNewLine(double *currVal, struct cord **currCord, struct cord **headCord, struct vector **currVec){
-    (*currCord)->value = *currVal;     
-    (*currVec)->cords = *headCord;      
+void handleNewLine(double *currVal, struct cord *currCord, struct cord *headCord, struct vector *currVec){
+    (currCord)->value = *currVal;     
+    (currVec)->cords = headCord;      
 }
 
 
@@ -306,20 +266,24 @@ void handleNewLine(double *currVal, struct cord **currCord, struct cord **headCo
  * It also updates the previous and current character status.
  * 
  * @param currVal Pointer to the current value to be stored in the cord.
- * @param ch Pointer to the current character read from the file.
  * @param prevCh Pointer to the previous character read from the file.
  * @param currCord Pointer to the current cord.
  * @param headCord Pointer to the head cord of the current vector.
  * @param currVec Pointer to the current vector.
  */
-void handleRegularChar(double *currVal, char *ch, char *prevCh, struct cord **currCord, struct cord **headCord, struct vector **currVec){
+int handleRegularChar(double *currVal, char *prevCh, struct cord *currCord, struct cord *headCord, struct vector *currVec){
     if (*prevCh == '\n') {
-        *currVec = addVector(*currVec);    
-        *headCord = createNewCord();      
-        *currCord = *headCord;             
+        currVec = addVector(currVec);
+        if (currVec == NULL) return -1;   
+        headCord = createNewCord(); 
+
+        if (headCord == NULL) return -1;
+        currCord = headCord;             
     }
-    (*currCord)->value = *currVal;         
-    *currCord = addNewCord(*currCord);     
+    (currCord)->value = *currVal;         
+    currCord = addNewCord(currCord);
+    if (currCord == NULL) return -1;
+    return 0;     
 }
 
 
@@ -336,19 +300,32 @@ struct vector* loadPoints(FILE *file){
     char ch; /* ch is used to check if the current character is a newline */
     char prevCh = '\0'; /* prevCh is used to check if the previous character was a newline */
     double currVal;
+    int err = 0;
+    struct vector *currVec, *headVec;
+    struct cord *currCord, *headCord;
+    currVec = createNewVector();  /* Create the first vector */
+    headVec = currVec; 
 
-    struct vector *currVec = createNewVector();  // Create the first vector
-    struct vector *headVec = currVec; 
-
-    struct cord *currCord = createNewCord();     // Create the first cord
-    struct cord *headCord = currCord; 
+    if (currVec == NULL) return NULL;
+    
+    currCord = createNewCord();     /* Create the first cord */
+    headCord = currCord; 
+    if (currCord == NULL){
+        freeVector(headVec);
+        return NULL;
+    };
 
     while (fscanf(file, "%lf%c", &currVal, &ch) == 2) {
-        if (ch == '\n') handleNewLine(&currVal, &currCord, &headCord, &currVec);
-        else handleRegularChar(&currVal, &ch, &prevCh, &currCord, &headCord, &currVec);
-        prevCh = ch;
-    }
-    return headVec;
+        if (ch == '\n') handleNewLine(&currVal, currCord, headCord, currVec);
+        else{
+            err = handleRegularChar(&currVal, &prevCh, currCord, headCord, currVec);
+            if (err == -1){
+                freeVector(headVec);
+                freeCord(headCord);
+                return NULL;
+            }
+        } prevCh = ch;
+    } return headVec;
 }
 
 
@@ -383,7 +360,7 @@ int countVectors(struct vector *headVec){
  * @param s2 - The second string
  * @return int 
  */
-int compareStrings(char *s1, char *s2){
+int compareStrings(const char *s1, const char *s2){
     while(*s1 != '\0'){
         if (*s1 != *s2) return 0;
         s1++, s2++;
@@ -429,8 +406,8 @@ double distance(struct cord *point1, struct cord *point2){
  */
 double columnSum(Matrix *matrix, int col){
     double sum = 0;
-    for (i = 0; i < matrix->rows; i++){
-        sum += matrix->data[i][col];
+    for (j = 0; j < matrix->rows; j++){
+        sum += matrix->data[j][col];
     }
     return sum;
 }
@@ -448,11 +425,11 @@ double columnSum(Matrix *matrix, int col){
 Matrix *matrixMultiply(Matrix *matrix1, Matrix *matrix2){
     Matrix *result;
     if (matrix1->cols != matrix2->rows) {
-        printf("Matrix dimensions do not match for multiplication.\n");
-        return NULL; /* Return empty matrix */
+        return NULL;
     }
 
     result = initializeMatrix(matrix1->rows, matrix2->cols);
+    if (result == NULL) return NULL;
 
     for (i = 0; i < matrix1->rows; i++){
         for (j = 0; j < matrix2->cols; j++){
@@ -496,10 +473,11 @@ void printMatrix(Matrix *matrix){
 Matrix *similarityMatrix(struct vector *points, int numOfPoints){
     struct vector *currPointRow;
     struct vector *currPointColumn;
-    Matrix *matrix = initializeMatrix(numOfPoints, numOfPoints);
-
     int row;
     int column;
+    Matrix *matrix;
+    matrix = initializeMatrix(numOfPoints, numOfPoints);
+    if (matrix == NULL) return NULL;
     currPointRow = points;
     for (row = 0; row < numOfPoints; row++){
         currPointColumn = points;
@@ -524,9 +502,13 @@ Matrix *similarityMatrix(struct vector *points, int numOfPoints){
  * @return Matrix - A Matrix struct representing the diagonal degree matrix
  */
 Matrix *diagonalDegreeMatrix(Matrix *similarityMatrix){
-    Matrix *ddg = initializeMatrix(similarityMatrix->rows, similarityMatrix->rows);
+    Matrix *ddg = NULL;
+    double sum;
+    ddg = initializeMatrix(similarityMatrix->rows, similarityMatrix->rows);
+    if (ddg == NULL) return NULL;
     for (i = 0; i < similarityMatrix->rows; i++){
-        ddg->data[i][i] = columnSum(similarityMatrix, i);
+        sum = columnSum(similarityMatrix, i);
+        ddg->data[i][i] = sum;
     }
     return ddg;
 }
@@ -542,10 +524,12 @@ Matrix *diagonalDegreeMatrix(Matrix *similarityMatrix){
  */
 Matrix *diagInvSqrtMatrix(Matrix *diagonalDegreeMatrix){
     Matrix *norm = initializeMatrix(diagonalDegreeMatrix->rows, diagonalDegreeMatrix->cols);
+    if (norm == NULL) return NULL;
     for (i = 0; i < diagonalDegreeMatrix->rows; i++){
         if (diagonalDegreeMatrix->data[i][i] != 0) {
             norm->data[i][i] = 1 / sqrt(diagonalDegreeMatrix->data[i][i]);
-        } else norm->data[i][i] = 0;
+        }
+        else norm->data[i][i] = 0;
     }
     return norm;
 }
@@ -561,9 +545,20 @@ Matrix *diagInvSqrtMatrix(Matrix *diagonalDegreeMatrix){
  * @return Matrix - A Matrix struct representing the normalized similarity matrix
  */
 Matrix *normalizedSimilarityMatrix(Matrix *similarityMat, Matrix *diagonalDegreeMat){
-    Matrix *diagInvSqrtMat = diagInvSqrtMatrix(diagonalDegreeMat);
-    Matrix *first = matrixMultiply(diagInvSqrtMat, similarityMat);
-    Matrix *result = matrixMultiply(first, diagInvSqrtMat);    
+    Matrix *diagInvSqrtMat, *first, *result;
+    diagInvSqrtMat = diagInvSqrtMatrix(diagonalDegreeMat);
+    if (diagInvSqrtMat == NULL) return NULL;
+    first = matrixMultiply(diagInvSqrtMat, similarityMat);
+    if (first == NULL){
+        freeMatrix(diagInvSqrtMat);
+        return NULL;
+    };
+    result = matrixMultiply(first, diagInvSqrtMat);
+    if (result == NULL){
+        freeMatrix(diagInvSqrtMat);
+        freeMatrix(first);
+        return NULL;
+    }    
     freeMatrix(diagInvSqrtMat);
     freeMatrix(first);
     return result;
@@ -580,14 +575,12 @@ Matrix *normalizedSimilarityMatrix(Matrix *similarityMat, Matrix *diagonalDegree
  * @return struct vector* Pointer to the head of the linked list of vectors, or NULL on failure.
  */
 struct vector* loadPointsFromFile(const char *fileName) {
+    struct vector *points;
     FILE *file = fopen(fileName, "r");
-    if (!file) {
-        printf("Error: Cannot open file %s\n", fileName);
-        return NULL;
-    }
+    if (!file) return NULL;
 
-    struct vector *points = loadPoints(file);  // Load points from the file
-    fclose(file);  // Close the file
+    points = loadPoints(file);  /* Load points from the file */
+    fclose(file);  /* Close the file */
     return points;
 }
 
@@ -602,31 +595,34 @@ struct vector* loadPointsFromFile(const char *fileName) {
  * @param goal The goal provided by the user (sym, ddg, norm).
  * @param similarityMat The similarity matrix computed from the points.
  */
-void processGoal(const char *goal, Matrix *similarityMat) {
+int processGoal(const char *goal, Matrix *similarityMat) {
     char sym[] = "sym";
     char ddg[] = "ddg";
     char norm[] = "norm";
 
-    // If goal is "sym", print the similarity matrix
-    if (compareStrings(goal, sym) == 1) {
-        printMatrix(similarityMat);
-    }
-    else {
-        Matrix *diagonalDegreeMat = diagonalDegreeMatrix(similarityMat);
+    Matrix *diagonalDegreeMat = NULL;
+    Matrix *normalizedSimilarityMat = NULL;
 
+    if (compareStrings(goal, sym) == 1) printMatrix(similarityMat);
+
+    else {
+        diagonalDegreeMat = diagonalDegreeMatrix(similarityMat);
+        if (diagonalDegreeMat == NULL) return -1;
         if (compareStrings(goal, ddg) == 1) {
             printMatrix(diagonalDegreeMat);
             freeMatrix(diagonalDegreeMat);
         } 
         else if (compareStrings(goal, norm) == 1) {
-            Matrix *normalizedSimilarityMat = normalizedSimilarityMatrix(similarityMat, diagonalDegreeMat);
+            normalizedSimilarityMat = normalizedSimilarityMatrix(similarityMat, diagonalDegreeMat);
+            if (normalizedSimilarityMat == NULL) {
+                freeMatrix(diagonalDegreeMat);
+                return -1;
+            }
             printMatrix(normalizedSimilarityMat);
             freeMatrix(diagonalDegreeMat);
             freeMatrix(normalizedSimilarityMat);
-        } else {
-            printf("Invalid goal: %s\n", goal);
-        }
-    }
+        } else printf("Invalid goal: %s\n", goal);
+    } return 0;
 }
 
 
@@ -641,10 +637,9 @@ void processGoal(const char *goal, Matrix *similarityMat) {
  * 
  */
 int main(int argc, char *argv[]) {
-    char *goal;
-    char *fileName;
+    char *goal, *fileName;
     struct vector *points;
-    int numOfPoints;
+    int numOfPoints, err;
     Matrix *similarityMat;
 
     if (argc != 3){
@@ -654,18 +649,21 @@ int main(int argc, char *argv[]) {
     
     goal = argv[1];
     fileName = argv[2];
-
     points = loadPointsFromFile(fileName);
-    if (!points) {
-        printf("An Error has Occured!\n");
+    if (points == NULL){
+        printf("An Error Has Occured!\n");
         return 1;
     }
 
     numOfPoints = countVectors(points);
     similarityMat = similarityMatrix(points, numOfPoints);
-    
-    processGoal(goal, similarityMat);
+    if (similarityMat == NULL) {
+        freeVector(points);
+        return 1;
+    }
+    err = processGoal(goal, similarityMat);
     freeMatrix(similarityMat);
     freeVector(points);
-    return 0;
+    return (err == -1) ? 1 : 0;
 }
+
