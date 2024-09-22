@@ -11,16 +11,28 @@
 
 
 /**
+ * @brief Frees 5 matrices
+ * 
+ */
+void freeMatrices(Matrix *M1, Matrix *M2, Matrix *M3, Matrix *M4, Matrix *M5){
+    freeMatrix(M1);
+    freeMatrix(M2);
+    freeMatrix(M3);
+    freeMatrix(M4);
+    freeMatrix(M5);
+    return;
+}
+
+
+/**
  * @brief Print a linked list of coordinates
  * 
  * The function prints a linked list of coordinates.
  * 
  * @param c - A pointer to the head of the linked list 
  */
-void printCord(struct cord *c)
-{
-    while(c != NULL)
-    {
+void printCord(struct cord *c){
+    while(c != NULL){
         printf("%.4f, ", c->value);
         c = c->next;
     }
@@ -34,10 +46,8 @@ void printCord(struct cord *c)
  * 
  * @param v - A pointer to the head of the linked list
  */
-void printVector(struct vector *v)
-{
-    while(v != NULL)
-    {
+void printVector(struct vector *v){
+    while(v != NULL){
         printCord(v->cords);
         printf("\n");
         v = v->next;
@@ -77,18 +87,26 @@ int getColumnSize(PyObject *obj, int rowIndex) {
  * @return int 1 if successful, 0 if an error occurs.
  */
 int populateVector(struct vector *vec, PyObject *obj, int columns) {
-    struct cord *headCord = createNewCord();
-    struct cord *currCord = headCord;
+    struct cord *headCord; 
+    struct cord *currCord;
+
+    headCord = createNewCord();
+    if (headCord == NULL) return -1;
+    currCord = headCord;
 
     for (int j = 0; j < columns; j++) {
         currCord->value = PyFloat_AsDouble(PyList_GetItem(obj, j));
         if (j < columns - 1) {
             currCord = addNewCord(currCord);
+            if (currCord == NULL) {
+                freeCord(headCord);
+                return -1;
+            }
         }
     }
 
     vec->cords = headCord; 
-    return 1; 
+    return 0; 
 }
 
 
@@ -102,33 +120,35 @@ int populateVector(struct vector *vec, PyObject *obj, int columns) {
  * @return A pointer to the head of the linked list of vectors, or NULL if an error occurs.
  */
 struct vector* PyObjectToLinkedList(PyObject *obj) {
-    if (!PyList_Check(obj)) {
-        PyErr_SetString(PyExc_TypeError, "Input must be a list of lists");
-        return NULL;
-    }
+    struct vector *headVec;
+    struct vector *currVec;
+    int columns, rows, i, err;
+    PyObject *currObj;
 
-    int rows = (int)PyList_Size(obj);
-    if (rows == 0) {
-        return NULL;
-    }
+    if (!PyList_Check(obj)) return NULL;
+    
+    rows = (int)PyList_Size(obj);
+    if (rows == 0) return NULL;
 
-    int columns = getColumnSize(obj, 0);
-    struct vector *headVec = createNewVector();
-    struct vector *currVec = headVec;
+    columns = getColumnSize(obj, 0);
+    headVec = createNewVector();
+    if (headVec == NULL) return NULL;
+    currVec = headVec;
 
-    for (int i = 0; i < rows; i++) {
-        PyObject *currObj = PyList_GetItem(obj, i);
-        if (!populateVector(currVec, currObj, columns)) {
-            freeLinkedList(headVec);
-            return NULL;
-        }
+    for (i = 0; i < rows; i++) {
+        currObj = PyList_GetItem(obj, i);
+        err = populateVector(currVec, currObj, columns);
+        if (err == -1) return NULL;
         if (i < rows - 1) {
             currVec = addVector(currVec);
+            if (currVec == NULL){
+                freeVector(headVec);
+                return NULL;
+            }
         }
     }
     return headVec;
 }
-
 
 
 /**
@@ -163,6 +183,35 @@ PyObject* matrixToPyObject(Matrix *matrix)
 
 
 /**
+ * @brief Populate a row of the matrix from a Python list.
+ * 
+ * This function populates a row of the matrix using values from the corresponding
+ * 
+ * inner list from the Python object.
+ * 
+ * @param matrix Pointer to the matrix structure being populated.
+ * @param obj A Python object representing the list of lists.
+ * @param row The index of the row being populated.
+ * @param columns The number of columns in the matrix.
+ * @return int 1 if successful, 0 if an error occurs.
+ */
+int populateRow(Matrix *matrix, PyObject *obj, int row, int columns) {
+    int j;
+    PyObject *rowObj;
+    rowObj = PyList_GetItem(obj, row);
+    
+    if (!PyList_Check(rowObj)) {
+        PyErr_SetString(PyExc_TypeError, "The input list must contain lists");
+        return 0; 
+    }
+    for (j = 0; j < columns; j++) {
+        matrix->data[row][j] = PyFloat_AsDouble(PyList_GetItem(rowObj, j));
+    }
+    return 1; 
+}
+
+
+/**
  * @brief Convert a Python list of lists to a matrix.
  * 
  * This function converts a Python list of lists (where each inner list represents a row of the matrix) 
@@ -172,33 +221,34 @@ PyObject* matrixToPyObject(Matrix *matrix)
  * @return A pointer to the `Matrix` structure, or NULL if an error occurs.
  */
 Matrix *PyobjectToMatrix(PyObject *obj) {
+    Matrix *matrix;
+    int m, n, i;
+    
     if (!PyList_Check(obj)) {
         PyErr_SetString(PyExc_TypeError, "The input must be a list of lists");
         return NULL;
     }
 
-    int n = (int)PyList_Size(obj);
+    n = (int)PyList_Size(obj);
     if (n == 0) {
         PyErr_SetString(PyExc_ValueError, "The input list is empty");
         return NULL;
     }
-
-    int m;
-    Matrix *matrix = initializeMatrix(n, getRowSize(obj, 0));
+    m = getColumnSize(obj, 0);
+    matrix = initializeMatrix(n, m);
     if (matrix == NULL) {
-        return NULL; // Memory allocation failed
+        return NULL; /* Memory allocation failed */
     }
 
-    for (int i = 0; i < n; i++) {
+    for (i = 0; i < n; i++) {
         if (!populateRow(matrix, obj, i, m)) {
             freeMatrix(matrix);
-            return NULL; // Error occurred in populating row
+            return NULL; /* Error occurred in populating row */
         }
     }
 
     return matrix;
 }
-
 
 
 /**
@@ -214,28 +264,32 @@ Matrix *PyobjectToMatrix(PyObject *obj) {
  * @param HHtMatrix Pointer to the matrix resulting from H * H^T.
  * @param HHtHMatrix Pointer to the matrix resulting from H * H^T * H.
  */
-void updateMatrices(Matrix *HMatrix, Matrix *WMatrix, Matrix **HMatrixT, Matrix **WHMatrix, 
-                    Matrix **HHtMatrix, Matrix **HHtHMatrix) {
+int updateMatrices(Matrix *HMatrix, Matrix *WMatrix, Matrix **HMatrixT, Matrix **WHMatrix, Matrix **HHtMatrix, Matrix **HHtHMatrix) {
     Matrix* tempmatrix;
-
-    /* Transpose HMatrix */
     tempmatrix = transpose(HMatrix);
+    if (tempmatrix == NULL) return -1;
     freeMatrix(*HMatrixT);
     *HMatrixT = tempmatrix;
-
-    /* Multiply WMatrix and HMatrix */
     tempmatrix = matrixMultiply(WMatrix, HMatrix);
+    if (tempmatrix == NULL){
+        freeMatrix(*HMatrixT);
+        return -1;
+    }
     *WHMatrix = tempmatrix;
-
-    /* Multiply HMatrix and HMatrixT */
     tempmatrix = matrixMultiply(HMatrix, *HMatrixT);
+    if (tempmatrix == NULL){
+        freeMatrices(*WHMatrix, *HMatrixT, NULL, NULL, NULL);
+        return -1;
+    }
     freeMatrix(*HHtMatrix);
     *HHtMatrix = tempmatrix;
-
-    /* Multiply HHtMatrix and HMatrix */
     tempmatrix = matrixMultiply(*HHtMatrix, HMatrix);
-    freeMatrix(*HHtHMatrix);
+    if (tempmatrix == NULL){
+        freeMatrices(*WHMatrix, *HMatrixT, *HHtMatrix, NULL, NULL);
+        return -1;
+    } freeMatrix(*HHtHMatrix);
     *HHtHMatrix = tempmatrix;
+    return 0;
 }
 
 
@@ -263,13 +317,12 @@ void updateHMatrix(Matrix *HMatrix, Matrix *WHMatrix, Matrix *HHtHMatrix, Matrix
             if (HHtHMatrix->data[i][j] != 0) {
                 calc = HMatrix->data[i][j] * (1 - BETA + BETA * (WHMatrix->data[i][j] / HHtHMatrix->data[i][j]));
             } else {
-                calc = HMatrix->data[i][j] * (1 - BETA);  // Handle division by zero
+                calc = HMatrix->data[i][j] * (1 - BETA);
             }
             next->data[i][j] = calc;
         }
     }
 }
-
 
 
 /**
@@ -284,6 +337,7 @@ void updateHMatrix(Matrix *HMatrix, Matrix *WHMatrix, Matrix *HHtHMatrix, Matrix
  * @return Matrix* Pointer to the resulting factorized matrix after convergence.
  */
 Matrix* performSymNMF(Matrix *HMatrix, Matrix *WMatrix) {
+    int err, iter;
     int n = HMatrix->rows;
     int m = HMatrix->cols;
     Matrix *next = initializeMatrix(n, m);
@@ -291,12 +345,16 @@ Matrix* performSymNMF(Matrix *HMatrix, Matrix *WMatrix) {
     Matrix *WHMatrix = initializeMatrix(n, m);
     Matrix *HHtMatrix = initializeMatrix(n, n);
     Matrix *HHtHMatrix = initializeMatrix(n, m);
-    Matrix *tmpmatrixNext = next;
-    int iter = 0;
+    Matrix *tmpmatrixNext;
+    if (next == NULL || HMatrixT == NULL || WHMatrix == NULL || HHtMatrix == NULL || HHtHMatrix == NULL) {
+        freeMatrices(HMatrixT, WHMatrix, HHtMatrix, HHtHMatrix, next);
+        return NULL;
+    } tmpmatrixNext = next;
+    iter = 0;
     double distance = INFINITY;
-
     while (iter < MAX_ITERATIONS) {
-        updateMatrices(HMatrix, WMatrix, &HMatrixT, &WHMatrix, &HHtMatrix, &HHtHMatrix);
+        err = updateMatrices(HMatrix, WMatrix, &HMatrixT, &WHMatrix, &HHtMatrix, &HHtHMatrix);
+        if (err == -1) return NULL;
         updateHMatrix(HMatrix, WHMatrix, HHtHMatrix, next, n, m);
         distance = MatrixDistance(next, HMatrix);
         if (distance < EPSILON) break;
@@ -304,13 +362,7 @@ Matrix* performSymNMF(Matrix *HMatrix, Matrix *WMatrix) {
         next = HMatrix;
         HMatrix = tmpmatrixNext;
         iter++;
-    }
-
-    freeMatrix(HMatrixT);
-    freeMatrix(WHMatrix);
-    freeMatrix(HHtMatrix);
-    freeMatrix(HHtHMatrix);
-    freeMatrix(tmpmatrixNext);
+    } freeMatrices(HMatrixT, WHMatrix, HHtMatrix, HHtHMatrix, tmpmatrixNext);
     return next;
 }
 
@@ -335,19 +387,23 @@ static PyObject* symnmf(PyObject *self, PyObject *args)
     Matrix *result;
     PyObject *retMat;
 
-    if(!PyArg_ParseTuple(args, "OO", &H, &W)) {
+    if(!PyArg_ParseTuple(args, "OO", &H, &W)) return NULL;
+
+    HMatrix = PyobjectToMatrix(H);
+    if (HMatrix == NULL) return NULL;
+    WMatrix = PyobjectToMatrix(W);
+    if (WMatrix == NULL) {
+        freeMatrix(HMatrix);
         return NULL;
     }
 
-    HMatrix = PyobjectToMatrix(H);
-    WMatrix = PyobjectToMatrix(W);
-    if (HMatrix == NULL || WMatrix == NULL) return NULL;
-
     result = performSymNMF(HMatrix, WMatrix);
+    if (result == NULL) {
+        freeMatrices(result, HMatrix, WMatrix, NULL, NULL);
+        return NULL;
+    }
     retMat = matrixToPyObject(result);
-
     freeMatrix(result);
-    
     return retMat;
 }
 
@@ -371,9 +427,19 @@ static PyObject* sym(PyObject *self, PyObject *args)
         return NULL;
     }
     points = PyObjectToLinkedList(X);
+    if (points == NULL) return NULL;
     numOfPoints = countVectors(points);
     Matrix *similarityMat = similarityMatrix(points, numOfPoints);
+    if (similarityMat == NULL) {
+        freeVector(points);
+        return NULL;
+    }
     retMat = matrixToPyObject(similarityMat);
+    if (retMat == NULL) {
+        freeVector(points);
+        freeMatrix(similarityMat);
+        return NULL;
+    }
 
     freeVector(points);
     freeMatrix(similarityMat);    
@@ -400,13 +466,22 @@ static PyObject* ddg(PyObject *self, PyObject *args)
         return NULL;
     }
     points = PyObjectToLinkedList(X);
+    if (points == NULL) return NULL;
     numOfPoints = countVectors(points);
     Matrix *similarityMat = similarityMatrix(points, numOfPoints);
+    if (similarityMat == NULL) {
+        freeVector(points);
+        return NULL;
+    }
     Matrix *diagonalDegreeMat = diagonalDegreeMatrix(similarityMat);
+    if (diagonalDegreeMat == NULL) {
+        freeVector(points);
+        freeMatrix(similarityMat);
+        return NULL;
+    }
     retMat = matrixToPyObject(diagonalDegreeMat);
     freeVector(points);
-    freeMatrix(similarityMat);
-    freeMatrix(diagonalDegreeMat);
+    freeMatrices(similarityMat, diagonalDegreeMat, NULL, NULL, NULL);
     return retMat;
 }
 
@@ -420,26 +495,36 @@ static PyObject* ddg(PyObject *self, PyObject *args)
  * @param args A tuple containing the points as a Python object.
  * @return A Python object representing the normalized similarity matrix, or NULL if an error occurs.
  */
-static PyObject* norm(PyObject *self, PyObject *args)
-{
+static PyObject* norm(PyObject *self, PyObject *args){
     PyObject *X, *retMat;
     struct vector* points;
     int numOfPoints;
+    Matrix *similarityMat, *diagonalDegreeMat, *normalizedSimilarityMat;
+    if(!PyArg_ParseTuple(args, "O", &X)) return NULL;
+    points = PyObjectToLinkedList(X);
+    if (points == NULL) return NULL;
+    numOfPoints = countVectors(points);
 
-    if(!PyArg_ParseTuple(args, "O", &X)) {
+    similarityMat = similarityMatrix(points, numOfPoints);
+    if (similarityMat == NULL) {
+        freeVector(points);
         return NULL;
     }
-    points = PyObjectToLinkedList(X);
-    numOfPoints = countVectors(points);
-    Matrix *similarityMat = similarityMatrix(points, numOfPoints);
-    Matrix *diagonalDegreeMat = diagonalDegreeMatrix(similarityMat);
-    Matrix *normalizedSimilarityMat = normalizedSimilarityMatrix(similarityMat, diagonalDegreeMat);
+    diagonalDegreeMat = diagonalDegreeMatrix(similarityMat);
+    if (diagonalDegreeMat == NULL) {
+        freeVector(points);
+        freeMatrix(similarityMat);
+        return NULL;
+    }
+    normalizedSimilarityMat = normalizedSimilarityMatrix(similarityMat, diagonalDegreeMat);
+    if (normalizedSimilarityMat == NULL) {
+        freeVector(points);
+        freeMatrices(similarityMat, diagonalDegreeMat, normalizedSimilarityMat, NULL, NULL);
+        return NULL;
+    }
     retMat = matrixToPyObject(normalizedSimilarityMat);
-
     freeVector(points);
-    freeMatrix(similarityMat);
-    freeMatrix(diagonalDegreeMat);
-    freeMatrix(normalizedSimilarityMat);
+    freeMatrices(similarityMat, diagonalDegreeMat, normalizedSimilarityMat, NULL, NULL);
     return retMat;
 }
 
@@ -490,5 +575,6 @@ PyMODINIT_FUNC PyInit_symnmf(void)
     if (!m) {
         return NULL;
     }
+    
     return m;
 }
