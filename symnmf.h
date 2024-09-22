@@ -31,7 +31,9 @@ struct vector* createNewVector();
 struct cord* addNewCord(struct cord *currCord);
 struct vector* addVector(struct vector *currVec);
 void freeVector(struct vector *v);
+void freeCord(struct cord *c);
 int countVectors(struct vector *headVec);
+
 
 void freeMatrix(Matrix *matrix);
 void printMatrix(Matrix *matrix);
