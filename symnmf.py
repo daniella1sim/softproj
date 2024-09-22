@@ -1,6 +1,6 @@
 import sys
 import numpy as np
-import symnmf
+import symnmf as sy
 
 np.random.seed(1234)
 
@@ -74,23 +74,6 @@ def similarity_matrix(data):
 
 
 """
-Runs the symnmf algorithm
-@type K: int
-@param K: The number of clusters
-@type data: numpy array
-@param data: A numpy array of data
-@rtype: numpy array"""
-def symnmf(K, data):
-    N, D = data.shape
-    A = similarity_matrix(data)
-    D = np.diag(np.sum(A, axis=0))
-    D_inv_sqrt = np.diag(1/np.sqrt(np.sum(A, axis=0)))
-    W = D_inv_sqrt @ A @ D_inv_sqrt
-    initial_H = np.random.uniform(low=0, high=(2*np.sqrt(np.average(W)/K)), size=(N, K))
-    return symnmf.symnmf(initial_H.tolist(), W.tolist())
-
-
-"""
 Main function that runs the program
 @rtype: int
 @returns: 0 if program runs successfully else 1
@@ -99,32 +82,33 @@ def main():
     K, goal, filepath = parse_data(sys.argv)
     if K == -1:
         return 1
- 
     data = np.genfromtxt(filepath, delimiter=',', dtype=float)
     N, D = data.shape
     if (K > N):
-        print("Error: K must be less than the number of rows in the data")
+        print("An Error Has Occured!")
         return 1
 
     A = similarity_matrix(data)
-    #D = np.diag(np.sum(A, axis=0))
     D_inv_sqrt = np.diag(1/np.sqrt(np.sum(A, axis=0)))
     W = D_inv_sqrt @ A @ D_inv_sqrt
-    
     initial_H = np.random.uniform(low=0, high=(2*np.sqrt(np.average(W)/K)), size=(N, K))
-
     initial_H_list = initial_H.tolist()
     W_list = W.tolist()
     data_list = data.tolist()
 
-    if goal == "symnmf":
-        res = symnmf.symnmf(initial_H_list, W_list)
-    elif goal == "sym":
-        res = symnmf.sym(data_list)
-    elif goal == "ddg":
-        res = symnmf.ddg(data_list)
-    else:
-        res = symnmf.norm(data_list)
+    try:
+        if goal == "symnmf":
+            res = sy.symnmf(initial_H_list, W_list)
+        elif goal == "sym":
+            res = sy.sym(data_list)
+        elif goal == "ddg":
+            res = sy.ddg(data_list)
+        else:
+            res = sy.norm(data_list)
+    except:
+        print("An Error Has Occured!")
+        return 1
+    
     for row in res:
         target = ",".join([f"{x:.4f}" for x in row])
         print(target)
