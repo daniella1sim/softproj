@@ -5,6 +5,7 @@ import sys
 import kmeans
 import symnmf
 
+np.random.seed(1234)
 
 """
 Converts command line arguments to usable data
@@ -41,6 +42,19 @@ def do_kmeans(k,iterations,filepath):
     return centroids
 
 
+"""Calculates euclidian disstance between cluster and a given point.
+    @type pointA: List[float]
+    @param pointA: point from data.
+    @type pointB: List[float]
+    @param pointB: point from data.
+    @rtype: float
+    @returns: the distance between 2 points
+""" 
+def distance(pointA, pointB):
+    dist = sum((pointA[i] - pointB[i]) ** 2 for i in range(len(pointA)))
+    return math.sqrt(dist)
+
+
 """
 Finds the centroid index for each point
 @type points: List[List[float]]
@@ -56,7 +70,7 @@ def get_points_centroid_index(points,centroids):
         min_dist = float('inf')
         index = 0
         for i in range(len(centroids)):
-            dist = kmeans.calc_distance(point,centroids[i])
+            dist = distance(point,centroids[i])
             if dist < min_dist:
                 min_dist = dist
                 index = i
@@ -68,13 +82,23 @@ def get_points_centroid_index(points,centroids):
 Runs the symnmf algorithm on a given points set
 @type K: int
 @param K: The number of clusters
-@type points: List[List[float]]
+@type points: NUMPY ARRAY
 @param points: A list of points
 @rtype: List[List[float]]
 @returns: A list of H matrix
 """
-def do_symnmf(K,points):
-    res = symnmf.symnmf(K, points)
+def do_symnmf(K, points):
+    N = len(points)
+    W = symnmf.norm(points)
+    W_np = np.array(W)
+    initial_H_np = np.random.uniform(low=0, high=(2*np.sqrt(np.average(W_np)/K)), size=(N, K))
+    initial_H = initial_H_np.tolist()
+    res = 0
+    try:
+        res = symnmf.symnmf(initial_H, W)
+    except:
+        print("An Error has occurred!")
+        sys.exit(1)
     return res
 
 
@@ -111,12 +135,11 @@ distance against between-cluster distance.
 def main():
     k, filepath = convert_args()
     points = kmeans.get_points(filepath)
-    np_points = np.array(points)
 
     kmeans_centroids = do_kmeans(k,300,filepath)
     kmeans_res = get_points_centroid_index(points,kmeans_centroids)
 
-    symnmf_H = do_symnmf(np_points, k)
+    symnmf_H = do_symnmf(k, points)
     symnmf_res = index_of_max_in_lists(symnmf_H)
 
     print("nmf: %.4f" % silhouette_score(points, symnmf_res))
