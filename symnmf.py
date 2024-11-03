@@ -54,26 +54,6 @@ def parse_data(args):
 
 
 """
-Creates a similarity matrix from the data
-@type data: numpy array
-@param data: A numpy array of data
-@rtype: numpy array
-@returns: A numpy array of the similarity matrix
-"""
-def similarity_matrix(data):
-    N = data.shape[0]
-    sim_matrix = np.zeros((N, N))
-    for i in range(N):
-        for j in range(N):
-            if i == j:
-                sim_matrix[i][j] = 0
-                continue
-            distance = np.linalg.norm(data[i] - data[j])
-            sim_matrix[i][j] = np.exp(-(distance**2)/2)
-    return sim_matrix
-
-
-"""
 Main function that runs the program
 @rtype: int
 @returns: 0 if program runs successfully else 1
@@ -88,16 +68,14 @@ def main():
         print("An Error Has Occured!")
         return 1
 
-    A = similarity_matrix(data)
-    D_inv_sqrt = np.diag(1/np.sqrt(np.sum(A, axis=0)))
-    W = D_inv_sqrt @ A @ D_inv_sqrt
-    initial_H = np.random.uniform(low=0, high=(2*np.sqrt(np.average(W)/K)), size=(N, K))
-    initial_H_list = initial_H.tolist()
-    W_list = W.tolist()
     data_list = data.tolist()
 
     try:
         if goal == "symnmf":
+            W_list = sy.norm(data_list)
+            W = np.array(W_list)
+            initial_H = np.random.uniform(low=0, high=(2*np.sqrt(np.average(W)/K)), size=(N, K))
+            initial_H_list = initial_H.tolist()
             res = sy.symnmf(initial_H_list, W_list)
         elif goal == "sym":
             res = sy.sym(data_list)
