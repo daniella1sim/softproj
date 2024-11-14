@@ -428,7 +428,7 @@ static PyObject* sym(PyObject *self, PyObject *args)
     }
     points = PyObjectToLinkedList(X);
     if (points == NULL) return NULL;
-    numOfPoints = countVectors(points);
+    numOfPoints = countVectors(points) + 1;
     Matrix *similarityMat = similarityMatrix(points, numOfPoints);
     if (similarityMat == NULL) {
         freeVector(points);
@@ -467,7 +467,7 @@ static PyObject* ddg(PyObject *self, PyObject *args)
     }
     points = PyObjectToLinkedList(X);
     if (points == NULL) return NULL;
-    numOfPoints = countVectors(points);
+    numOfPoints = countVectors(points) + 1;
     Matrix *similarityMat = similarityMatrix(points, numOfPoints);
     if (similarityMat == NULL) {
         freeVector(points);
@@ -503,7 +503,7 @@ static PyObject* norm(PyObject *self, PyObject *args){
     if(!PyArg_ParseTuple(args, "O", &X)) return NULL;
     points = PyObjectToLinkedList(X);
     if (points == NULL) return NULL;
-    numOfPoints = countVectors(points);
+    numOfPoints = countVectors(points) + 1;
 
     similarityMat = similarityMatrix(points, numOfPoints);
     if (similarityMat == NULL) {

@@ -2,7 +2,7 @@ import sys
 import numpy as np
 import symnmf as sy
 
-np.random.seed(1234)
+np.random.seed(0)
 
 
 """"
@@ -63,7 +63,10 @@ def main():
     if K == -1:
         return 1
     data = np.genfromtxt(filepath, delimiter=',', dtype=float)
-    N, D = data.shape
+    if data.ndim == 1:
+        N, D = len(data), 1
+    else:
+        N, D = data.shape
     if (K > N):
         print("An Error Has Occured!")
         return 1

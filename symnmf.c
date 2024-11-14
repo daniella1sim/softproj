@@ -211,7 +211,7 @@ struct vector* addVector(struct vector *currVec){
 void freeCord(struct cord *c){
     struct cord *tmp;
     tmp = c;
-    while (c->next != NULL){
+    while (c != NULL){
         tmp = c;
         c = c->next;
         free(tmp);
@@ -297,35 +297,44 @@ int handleRegularChar(double *currVal, char *prevCh, struct cord *currCord, stru
  * @return struct vector* 
  */
 struct vector* loadPoints(FILE *file){
-    char ch; /* ch is used to check if the current character is a newline */
-    char prevCh = '\0'; /* prevCh is used to check if the previous character was a newline */
-    double currVal;
-    int err = 0;
-    struct vector *currVec, *headVec;
-    struct cord *currCord, *headCord;
-    currVec = createNewVector();  /* Create the first vector */
-    headVec = currVec; 
+    struct vector *head_vec, *curr_vec;
+    struct cord *head_cord, *curr_cord;
+    double n;
+    char c;
 
-    if (currVec == NULL) return NULL;
-    
-    currCord = createNewCord();     /* Create the first cord */
-    headCord = currCord; 
-    if (currCord == NULL){
-        freeVector(headVec);
-        return NULL;
-    };
+    head_cord = (struct cord*)calloc(1, sizeof(struct cord));
+    curr_cord = head_cord;
+    curr_cord->next = NULL;
 
-    while (fscanf(file, "%lf%c", &currVal, &ch) == 2) {
-        if (ch == '\n') handleNewLine(&currVal, currCord, headCord, currVec);
-        else{
-            err = handleRegularChar(&currVal, &prevCh, currCord, headCord, currVec);
-            if (err == -1){
-                freeVector(headVec);
-                freeCord(headCord);
-                return NULL;
-            }
-        } prevCh = ch;
-    } return headVec;
+    head_vec = (struct vector*)calloc(1,sizeof(struct vector));
+    curr_vec = head_vec;
+    curr_vec->next = NULL;
+
+
+    while (fscanf(file, "%lf%c", &n, &c) == 2)
+    {
+
+        if (c == '\n')
+        {
+            curr_cord->value = n;
+            curr_vec->cords = head_cord;
+            curr_vec->next = (struct vector*)calloc(1, sizeof(struct vector));
+            curr_vec = curr_vec->next;
+            curr_vec->next = NULL;
+            head_cord = (struct cord*)calloc(1, sizeof(struct cord));
+            curr_cord = head_cord;
+            curr_cord->next = NULL;
+            continue;
+        }
+
+        curr_cord->value = n;
+        curr_cord->next = (struct cord*)calloc(1, sizeof(struct cord));
+        curr_cord = curr_cord->next;
+        curr_cord->next = NULL;
+    }
+
+    freeCord(head_cord);
+    return head_vec;
 }
 
 
@@ -347,7 +356,7 @@ int countVectors(struct vector *headVec){
         counter++;
         currVec = currVec->next;
     }
-    return counter;
+    return counter - 1;
 }
 
 
