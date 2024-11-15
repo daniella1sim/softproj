@@ -242,52 +242,6 @@ void freeVector(struct vector *v){
 
 
 /**
- * @brief Handle logic when a newline character is encountered in the file.
- * 
- * When a newline is encountered, the function stores the current value in the last cord and 
- * assigns the linked list of cords to the current vector.
- * 
- * @param currVal Pointer to the current value to be stored in the cord.
- * @param currCord Pointer to the current cord.
- * @param headCord Pointer to the head cord of the current vector.
- * @param currVec Pointer to the current vector.
- */
-void handleNewLine(double *currVal, struct cord *currCord, struct cord *headCord, struct vector *currVec){
-    (currCord)->value = *currVal;     
-    (currVec)->cords = headCord;      
-}
-
-
-
-/**
- * @brief Handle logic when a regular character (not a newline) is encountered in the file.
- * 
- * When a regular character is encountered, the function creates new cords and vectors as necessary.
- * It also updates the previous and current character status.
- * 
- * @param currVal Pointer to the current value to be stored in the cord.
- * @param prevCh Pointer to the previous character read from the file.
- * @param currCord Pointer to the current cord.
- * @param headCord Pointer to the head cord of the current vector.
- * @param currVec Pointer to the current vector.
- */
-int handleRegularChar(double *currVal, char *prevCh, struct cord *currCord, struct cord *headCord, struct vector *currVec){
-    if (*prevCh == '\n') {
-        currVec = addVector(currVec);
-        if (currVec == NULL) return -1;   
-        headCord = createNewCord(); 
-
-        if (headCord == NULL) return -1;
-        currCord = headCord;             
-    }
-    (currCord)->value = *currVal;         
-    currCord = addNewCord(currCord);
-    if (currCord == NULL) return -1;
-    return 0;     
-}
-
-
-/**
  * @brief Load points from file
  * 
  * The function reads the file and loads the points into a linked list of vectors.
