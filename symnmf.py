@@ -2,9 +2,15 @@ import sys
 import numpy as np
 import symnmf as sy
 
-np.random.seed(0)
+np.random.seed(1234)
 
 
+"""
+Prints an error message and exits the program.
+
+@rtype: None
+@returns: Exits the program with a status of 1.
+"""
 def error():
     print("An Error Has Occured!")
     exit(1)
