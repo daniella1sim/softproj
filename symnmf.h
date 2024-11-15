@@ -20,7 +20,7 @@ typedef struct
     int cols;
 } Matrix;
 
-
+void freeMatrix(Matrix *matrix);
 Matrix *initializeMatrix(int n, int m);
 Matrix *transpose(Matrix * matrix);
 double MatrixDistance(Matrix *matrixA, Matrix *matrixB);
@@ -34,8 +34,6 @@ void freeVector(struct vector *v);
 void freeCord(struct cord *c);
 int countVectors(struct vector *headVec);
 
-
-void freeMatrix(Matrix *matrix);
 void printMatrix(Matrix *matrix);
 
 Matrix *similarityMatrix(struct vector *points, int numOfPoints);
