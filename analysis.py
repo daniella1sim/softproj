@@ -4,8 +4,9 @@ import math
 import sys
 import kmeans
 import symnmf
+from tools import isInt, error
 
-np.random.seed(1234)
+np.random.seed(0)
 
 """
 Converts command line arguments to usable data
@@ -14,8 +15,8 @@ Converts command line arguments to usable data
 """
 def convert_args():
     if len(sys.argv) != 3:
-        symnmf.error()
-    k = symnmf.isInt(sys.argv[1])
+        error()
+    k = isInt(sys.argv[1])
     filepath = sys.argv[2]
     return k, filepath
 
@@ -93,7 +94,7 @@ def do_symnmf(K, points):
     try:
         res = symnmf.symnmf(initial_H, W)
     except:
-        symnmf.error()
+        error()
     return res
 
 
@@ -130,7 +131,6 @@ distance against between-cluster distance.
 def main():
     k, filepath = convert_args()
     points = kmeans.get_points(filepath)
-
     kmeans_centroids = do_kmeans(k,300,filepath)
     kmeans_res = get_points_centroid_index(points,kmeans_centroids)
 
