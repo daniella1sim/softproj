@@ -504,7 +504,6 @@ static PyObject* norm(PyObject *self, PyObject *args){
     points = PyObjectToLinkedList(X);
     if (points == NULL) return NULL;
     numOfPoints = countVectors(points) + 1;
-
     similarityMat = similarityMatrix(points, numOfPoints);
     if (similarityMat == NULL) {
         freeVector(points);
@@ -526,7 +525,7 @@ static PyObject* norm(PyObject *self, PyObject *args){
     freeVector(points);
     freeMatrices(similarityMat, diagonalDegreeMat, normalizedSimilarityMat, NULL, NULL);
     return retMat;
-}
+    }
 
 
 /* Module method definitions */
