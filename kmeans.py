@@ -1,5 +1,6 @@
 import math
 import sys
+from symnmf import error, isInt
 
 EPSILON = 0.001
 
@@ -63,28 +64,6 @@ class Cluster():
     def calc_distance(self, point):
         dist = sum((point[i] - self.centroid[i]) ** 2 for i in range(len(point)))
         return math.sqrt(dist)
-
-
-"""
-Verifies argument is an int
-@type arg: String
-@param arg: A string of input from user to verify
-@rtype: Touple(int, int)
-@returns: First int return 1 if arg is not an integer and 1 if it is, second returns the arg in integer form.
-""" 
-def isInt(arg):
-    try:
-        return 0, int(arg)
-    except:
-        try:
-            float_arg = float(arg)
-            int_arg = int(arg[0 : arg.find(".")])
-            if (float_arg) == int_arg:
-                return 0, int_arg
-            else:
-                return 1, 0
-        except:
-            return 1, 0
     
 
 """
@@ -105,13 +84,12 @@ Verifies argument validity: correct number of arguments, correct input for K, it
 Parses file from txt file to a 2d matrix of coordinates.
 @type args: List[String]
 @param args: arg[0] is file name, arg[1] is number of cluster k, arg[2] is either number of iterations or path to txt file, arg[3] is optional - if exists then its the filepath.
-@rtype: List[int, int, List[List[float]]]
-@returns: List[0] = k, List[1] = iter, List[2] = data OR [-1,0,0] if error.
+@rtype: Tuple(int, int, List[List[float]])
+@returns: A tuple of the parsed data containing K, iterations, and filepath to data.
 """ 
 def verify_data(args):
     if len(args) not in [3, 4]:
-        print("An error has occurred!")
-        return -1, 0, 0
+        error()
     err_K,K = isInt(args[1])
     err_iter = 0
     if len(args) == 3:
@@ -121,20 +99,18 @@ def verify_data(args):
     path = args[2] if len(args) == 3 else args[3]
 
     if not path.endswith(".txt"):
-        print("An error has occurred!")
-        return -1, 0, 0
+        error()
     
     data = get_points(path)
 
     if len(data) == 0:
-        print("An error has occurred!")
-        return -1, 0, 0
+        error()
     if len(data) <= K or K <= 0 or err_K:
         print("Invalid number of clusters!")
-        return -1, 0, 0
+        exit(1)
     if iterations >= 1000 or iterations <= 0 or err_iter:
         print("Invalid maximum iteration!")
-        return -1, 0, 0
+        exit(1)
     
     return K, iterations, data
 
@@ -236,12 +212,12 @@ Runs main logic of file and prints centroids of calculated k mean clusters.
 """ 
 def main():
     K, iterations, data = verify_data(sys.argv)
-    if K == -1:
-        return 1
     cluster_list = kmeans(K, iterations, data) 
     print_clusters(cluster_list)
-    return 1
+    return 0
 
-
+"""
+Runs main function.
+"""
 if __name__ == "__main__":
     main()
