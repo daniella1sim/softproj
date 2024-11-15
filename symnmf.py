@@ -5,26 +5,31 @@ import symnmf as sy
 np.random.seed(0)
 
 
+def error():
+    print("An Error Has Occured!")
+    exit(1)
+
+
 """"
 Verifies argument is an int
 @type arg: String
 @param arg: A string of input from user to verify
 @rtype: Touple(int, int)
-@returns: First int return 1 if arg is not an integer and 1 if it is, second returns the arg in integer form.
+@returns: arg in integer form.
 """
 def isInt(arg):
     try:
-        return 0, int(arg)
+        return int(arg)
     except:
         try:
             float_arg = float(arg)
             int_arg = int(arg[0: arg.find(".")])
             if (float_arg) == int_arg:
-                return 0, int_arg
+                return int_arg
             else:
-                return 1, 0
+                error()
         except:
-            return 1, 0
+            error()
 
 
 """
@@ -36,20 +41,14 @@ Parses the data from the command line
 """
 def parse_data(args):
     if len(args) != 4:
-        print("Error: Incorrect number of arguments")
-        return -1, 0, 0
-    err_K, K = isInt(args[1])
-    if err_K:
-        print("Error: K must be an integer")
-        return -1, 0, 0
+        error()
+    K = isInt(args[1])
     goal = args[2]
     if goal not in ["symnmf", "sym", "ddg", "norm"]:
-        print("Error: goal must be one of symnmf, sym, ddg, norm")
-        return -1, 0, 0
+        error()
     filepath = sys.argv[3]
     if (filepath[-4:] != ".txt"):
-        print("Error: file must be a .txt file")
-        return -1, 0, 0
+        error()
     return K, goal, filepath
 
 
@@ -60,19 +59,15 @@ Main function that runs the program
 """
 def main():
     K, goal, filepath = parse_data(sys.argv)
-    if K == -1:
-        return 1
     data = np.genfromtxt(filepath, delimiter=',', dtype=float)
     if data.ndim == 1:
         N, D = len(data), 1
+        data_list = [[i] for i in data.tolist()]
     else:
         N, D = data.shape
+        data_list = data.tolist()
     if (K > N):
-        print("An Error Has Occured!")
-        return 1
-
-    data_list = data.tolist()
-
+        error()
     try:
         if goal == "symnmf":
             W_list = sy.norm(data_list)
@@ -86,9 +81,8 @@ def main():
             res = sy.ddg(data_list)
         else:
             res = sy.norm(data_list)
-    except:
-        print("An Error Has Occured!")
-        return 1
+    except Exception as e:
+        error()
     
     for row in res:
         target = ",".join([f"{x:.4f}" for x in row])
