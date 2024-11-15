@@ -1,6 +1,6 @@
 import math
 import sys
-from symnmf import error, isInt
+from tools import isInt, error
 
 EPSILON = 0.001
 
@@ -90,12 +90,12 @@ Parses file from txt file to a 2d matrix of coordinates.
 def verify_data(args):
     if len(args) not in [3, 4]:
         error()
-    err_K,K = isInt(args[1])
+    K = isInt(args[1])
     err_iter = 0
     if len(args) == 3:
         iterations = 200
     else:
-        err_iter, iterations = isInt(args[2])
+        iterations = isInt(args[2])
     path = args[2] if len(args) == 3 else args[3]
 
     if not path.endswith(".txt"):
@@ -105,10 +105,10 @@ def verify_data(args):
 
     if len(data) == 0:
         error()
-    if len(data) <= K or K <= 0 or err_K:
+    if len(data) <= K or K <= 0:
         print("Invalid number of clusters!")
         exit(1)
-    if iterations >= 1000 or iterations <= 0 or err_iter:
+    if iterations >= 1000 or iterations <= 0:
         print("Invalid maximum iteration!")
         exit(1)
     
