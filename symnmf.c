@@ -301,21 +301,15 @@ struct vector* loadPoints(FILE *file){
     struct cord *head_cord, *curr_cord;
     double n;
     char c;
-
     head_cord = (struct cord*)calloc(1, sizeof(struct cord));
     curr_cord = head_cord;
     curr_cord->next = NULL;
-
     head_vec = (struct vector*)calloc(1,sizeof(struct vector));
     curr_vec = head_vec;
     curr_vec->next = NULL;
 
-
-    while (fscanf(file, "%lf%c", &n, &c) == 2)
-    {
-
-        if (c == '\n')
-        {
+    while (fscanf(file, "%lf%c", &n, &c) == 2){
+        if (c == '\n'){
             curr_cord->value = n;
             curr_vec->cords = head_cord;
             curr_vec->next = (struct vector*)calloc(1, sizeof(struct vector));
@@ -326,13 +320,11 @@ struct vector* loadPoints(FILE *file){
             curr_cord->next = NULL;
             continue;
         }
-
         curr_cord->value = n;
         curr_cord->next = (struct cord*)calloc(1, sizeof(struct cord));
         curr_cord = curr_cord->next;
         curr_cord->next = NULL;
     }
-
     freeCord(head_cord);
     return head_vec;
 }
@@ -502,6 +494,7 @@ Matrix *similarityMatrix(struct vector *points, int numOfPoints){
     return matrix;
 }
 
+
 /**
  * @brief Calculate the diagonal degree matrix
  * 
@@ -608,7 +601,6 @@ int processGoal(const char *goal, Matrix *similarityMat) {
     char sym[] = "sym";
     char ddg[] = "ddg";
     char norm[] = "norm";
-
     Matrix *diagonalDegreeMat = NULL;
     Matrix *normalizedSimilarityMat = NULL;
 
@@ -630,8 +622,10 @@ int processGoal(const char *goal, Matrix *similarityMat) {
             printMatrix(normalizedSimilarityMat);
             freeMatrix(diagonalDegreeMat);
             freeMatrix(normalizedSimilarityMat);
-        } else printf("Invalid goal: %s\n", goal);
-    } return 0;
+        } 
+        else printf("Invalid goal: %s\n", goal);
+    } 
+    return 0;
 }
 
 
@@ -675,4 +669,3 @@ int main(int argc, char *argv[]) {
     freeVector(points);
     return (err == -1) ? 1 : 0;
 }
-
