@@ -14,12 +14,8 @@ Converts command line arguments to usable data
 """
 def convert_args():
     if len(sys.argv) != 3:
-        print("An Error has occurred!")
-        sys.exit(1)
-    Err_k, k = kmeans.isInt(sys.argv[1])
-    if Err_k:
-        print("An Error has occurred!")
-        sys.exit(1)
+        symnmf.error()
+    k = symnmf.isInt(sys.argv[1])
     filepath = sys.argv[2]
     return k, filepath
 
@@ -97,8 +93,7 @@ def do_symnmf(K, points):
     try:
         res = symnmf.symnmf(initial_H, W)
     except:
-        print("An Error has occurred!")
-        sys.exit(1)
+        symnmf.error()
     return res
 
 
@@ -145,6 +140,8 @@ def main():
     print("nmf: %.4f" % silhouette_score(points, symnmf_res))
     print("kmeans: %.4f" % silhouette_score(points, kmeans_res))
 
-
+"""
+This is the entry point of the program.
+"""
 if __name__ == "__main__":
     main()
