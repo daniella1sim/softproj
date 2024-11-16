@@ -1,6 +1,6 @@
 import sys
 import numpy as np
-import symnmf as sy
+import symnmfmodule as sy
 from tools import isInt, error
 
 np.random.seed(0)
