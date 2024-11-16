@@ -6,7 +6,7 @@ import kmeans
 import symnmfmodule
 from tools import isInt, error
 
-np.random.seed(0)
+np.random.seed(1234)
 
 """
 Converts command line arguments to usable data
