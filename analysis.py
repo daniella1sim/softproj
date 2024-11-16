@@ -3,7 +3,7 @@ from sklearn.metrics import silhouette_score
 import math
 import sys
 import kmeans
-import symnmf
+import symnmfmodule
 from tools import isInt, error
 
 np.random.seed(0)
@@ -86,13 +86,13 @@ Runs the symnmf algorithm on a given points set
 """
 def do_symnmf(K, points):
     N = len(points)
-    W = symnmf.norm(points)
+    W = symnmfmodule.norm(points)
     W_np = np.array(W)
     initial_H_np = np.random.uniform(low=0, high=(2*np.sqrt(np.average(W_np)/K)), size=(N, K))
     initial_H = initial_H_np.tolist()
     res = 0
     try:
-        res = symnmf.symnmf(initial_H, W)
+        res = symnmfmodule.symnmf(initial_H, W)
     except:
         error()
     return res
